@@ -22,6 +22,8 @@ def reconstruct(W, X3, L=25, N=20):
   eigenvectors
   """
   evecs, evals = eig(X3, L, N)
+  print np.shape(evals)
+  print evals
   evals_rec = np.array([(1. / (w ** 2)) for w in evals])
   evecs_rec = [np.linalg.solve(W.T, e * evecs[k, :]) for k, e in enumerate(evals)]
   # now in reverse order

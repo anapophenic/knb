@@ -68,7 +68,7 @@ def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
   if queryX is None:
     pXbarH = G*A
   else: 
-    pXbarH = crossComputeKerns(queryX,np.matrix(X[:,2]).T,kernel,symmetric,var)
+    pXbarH = crossComputeKerns(queryX,np.matrix(X[:,2]).T,kernel,symmetric,var)*A
   return pXbarH  
   
 def crossComputeKerns(X,Y,kernel,symmetric,var=1):
