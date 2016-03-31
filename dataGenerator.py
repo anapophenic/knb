@@ -26,7 +26,28 @@ def makeTransitionMatrix(numState, minSigma):
 
 # <codecell>
 
-makeTransitionMatrix(5, 0.1)
+def makeObservationMatrix(numState, numObs, minSigma):
+    # Input:
+    # numState : number of hidden state
+    # numObs   : number of possible observations
+    # minSigma : the smallest singular value
+    
+    # Output: an observation matrix T satifying input specifications
+    #       T is column stochastic. T_ij is state j to state i. 
+    assert (numObs >= numState),"More hidden states than observations"
+    min_s = 0
+    while min_s < minSigma:
+        T_raw = np.random.rand(numState,numObs)
+        T = np.array([row *1.0 / sum(row) for row in T_raw])
+        T = np.transpose(T)
+        U, s, V = np.linalg.svd(T, full_matrices=True)
+        min_s = min(s)
+    return T
+
+# <codecell>
+
+makeObservationMatrix(3, 5, 0.1)
+#makeTransitionMatrix(5, 0.1)
 
 # <codecell>
 
@@ -43,9 +64,9 @@ def weighted_values(values, probabilities, size):
 
 # <codecell>
 
-def generateData(N, numState, T, p, initDist, l):
+def generateData_longChain(N, numState, T, p, initDist, l):
     ### This function generates l methylation counts triples, 0 <= counts <= N.
-    ### Data generated from an HMM with
+    ### Data generated from an HMM with transition matrix T
     #   T is column stochastic
     
     # create l triples (x1, x2, x3), x1, x2, x3 \in [N].
@@ -82,19 +103,90 @@ def generateData(N, numState, T, p, initDist, l):
 
 # <codecell>
 
-N = 10000
-numState = 10
+def generateData_firstFew(N, numState, T, p, initDist, l):
+    ### This function generates l triples, each representing methylation counts at first 3 cites of a sequence
+    ### Data generated from an HMM with transition matrix T
+    #   T is column stochastic
+    
+    # create l triples (x1, x2, x3), x1, x2, x3 \in [N].
+    T = np.transpose(T)
+    # values : list of possible observation outcome (counts)
+    values = np.arange(N+1)
+    # c : list of possible hidden states
+    c = np.arange(numState)
+      
+    ### Generate hidden state list
+    data = np.array([])
+    for j in range(l):
+        # initialize each chain
+        x_lst = np.array([], dtype='int32')
+        initS = weighted_values(c, initDist, 1)
+        h_lst = initS
+        # generate h and x
+        for i in range(3):
+            h_curr = h_lst[-1]
+            q = p[h_lst[-1]]
+            x = np.random.binomial(N, q)
+            dist = T[h_curr]
+            h_next = weighted_values(c, dist, 1)
+            h_lst = np.append(h_lst, h_next)
+            x_lst = np.append(x_lst, x)
+        data = np.append(data, x_lst)
+    
+    ### Reshape data to l by 3
+    data = np.reshape(data, [l, 3])
+    return data
+
+# <codecell>
+
+def generateData_general(N, numState, T, O, initDist, l):
+    ### This function generates l triples, each representing methylation counts at first 3 cites of a sequence
+    ### Data generated from an HMM with transition matrix T and obervation matrix O
+    #   T and O are column stochastic
+    
+    # create l triples (x1, x2, x3), x1, x2, x3 \in [N].
+    T = np.transpose(T)
+    O = np.transpose(O)
+    # values : list of possible observation outcome (counts)
+    values = np.arange(N+1)
+    # p[] : methylation probability for hidden state
+    # p = np.random.rand(numState)
+    # c : list of possible hidden states
+    c = np.arange(numState)
+    
+      
+    ### Generate hidden state list
+    data = np.array([])
+    for j in range(l):
+        # initialize each chain
+        x_lst = np.array([], dtype='int32')
+        initS = weighted_values(c, initDist, 1)
+        h_lst = initS
+        # generate h and x
+        for i in range(3):
+            h_curr = h_lst[-1]
+            obsDist = O[h_curr]
+            x = weighted_values(values, obsDist, 1)
+            dist = T[h_curr]
+            h_next = weighted_values(c, dist, 1)
+            h_lst = np.append(h_lst, h_next)
+            x_lst = np.append(x_lst, x)
+        data = np.append(data, x_lst)
+    
+    ### Reshape data to l by 3
+    data = np.reshape(data, [l, 3])
+    return data
+
+# <codecell>
+
+N = 10
+numObs = N+1
+numState = 5
 l = 10000
 min_sigma = 0.1
 T = makeTransitionMatrix(numState, min_sigma)
+O = makeObservationMatrix(numState, numObs, min_sigma)
 initDist = makeDistribution(numState)
-p = np.random.rand(numState)
-Data = generateData(N, numState, T, p, initDist, l)
-Data
-
-# <codecell>
-
-
-# <codecell>
-
+#p = np.random.rand(numState)
+Data = generateData_general(N, numState, T, O, initDist, l)
 

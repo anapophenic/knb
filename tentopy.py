@@ -1,11 +1,12 @@
 #!/usr/bin/env/python
 """
-tentopy.py
+linalg.py
+
 Linear algebra tools for orthogonal tensor decompositions.
+
 The power method algorithm is based on the robust tensor power method, described
 in Algorithm 1 of "Tensor Decompositions for Learning Latent Variable Models"
 by Anandkumar et al.
-author:arbenson (http://github.com/arbenson/tentopy/)
 """
 
 import numpy as np
@@ -14,16 +15,16 @@ import math
 def reconstruct(W, X3, L=25, N=20):
   """ Reconstruct the eigenvalues and eigenvectors corresponding to the
   probability distributions.
+
   inputs:
   W: the whitening matrix of M2
   M3: the third-order moment matrix
+
   outputs:
   eigenvalues
   eigenvectors
   """
   evecs, evals = eig(X3, L, N)
-  print np.shape(evals)
-  print evals
   evals_rec = np.array([(1. / (w ** 2)) for w in evals])
   evecs_rec = [np.linalg.solve(W.T, e * evecs[k, :]) for k, e in enumerate(evals)]
   # now in reverse order
@@ -34,6 +35,7 @@ def whiten(M2, M3):
   """ Form the pseudo-whitening matrix of M2 and apply to M3 to form \tilde{M3}.
   To pseudo-whitening matrix is formed by a thresholding eigenvalue
   decomposition.  If M2 = UDU^T, then form [D']_i = max(abs([D]_i), \epsilon).
+
   inputs:
   M2: the second-order moment matrix
   M3: the third-order moment matrix
@@ -101,7 +103,6 @@ def power_method(T, L, N, norm_type=2):
       (approximate largest eigenvalue, corresponding eigenvector,
        deflated tensor)
   """
-  L,N = int(L),int(N)
   k = T.shape[0]
   n = len(T.shape)
   thetas = []
@@ -124,16 +125,18 @@ def power_method(T, L, N, norm_type=2):
   lambda_hat = approx_eval(T, theta_hat)
   rank1_approx = lambda_hat * tensor_outer(theta_hat, n)
 
-  return lambda_hat, theta_hat, T - rank1_approx
+  return theta_hat, lambda_hat, T - rank1_approx
 
 def eig(T, L=10, N=10, norm_type=2):
   """ Compute the eigen-decomposition of a super-symmetric tensor.
+
   inputs:
   T: a super-symmetric tensor
   L: number of inner iterations of power method to perform
   N: number of iterations per inner iteration
+
   outputs:
-  a tuple of eigenvalues and eigenvectors
+  a tuple of eigenvectors and eigenvalues
   """
   if sum([d == T.shape[0] for d in T.shape]) != len(T.shape):
     raise Exception('Each tensor dimension must be the same')
@@ -141,10 +144,10 @@ def eig(T, L=10, N=10, norm_type=2):
   evecs = []
   evals = []
   for i in xrange(k):
-    eval, evec, def_T = power_method(T if i == 0 else def_T, L, N, norm_type)
+    evec, eval, def_T = power_method(T if i == 0 else def_T, L, N, norm_type)
     evecs.append(list(evec))
     evals.append(eval)
-  return np.matrix(np.array(evals)),np.matrix(np.array(evecs))
+  return np.array(evecs), np.array(evals)
 
 if __name__ == '__main__':
   N = 20

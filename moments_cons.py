@@ -12,9 +12,10 @@ def moments_cons(X, phi, N, n):
     P_13 = np.zeros((n,n));        
     P_123 = np.zeros((n,n,n));         
     
-    s = float(np.shape(X)[0]);
+    l = np.shape(X)[0];
+    s = float(l);
     
-    for i in range(np.shape(X)[0]):
+    for i in xrange(l):
         p1 = phi(X[i,0], N, n);
         p2 = phi(X[i,1], N, n);
         p3 = phi(X[i,2], N, n);
@@ -25,25 +26,77 @@ def moments_cons(X, phi, N, n):
         P_13 += np.kron(p1, p3). reshape(n, n) / s
         P_123 += np.kron(p1, np.kron(p2, p3)). reshape(n, n, n) / s
         
-    return np.mat(P_21), np.mat(P_31), np.mat(P_23), np.mat(P_13), P_123
+    return P_21, P_31, P_23, P_13, P_123
+
+def moments_gt(O, phi, N, n, T, initDist):
+    '''
+    P_21 = C * T * diag(initDist) * C.T
+    P_31 = C * T * T * diag(initDist) * C.T
+    
+    P_32 = C * T * diag(T * initDist) * C.T
+    P_23 = P_32.T
+    P_13 = P_31.T
+    
+    C_1 = C * diag(initDist) * T.T * diag(T*initDist)^{-1} 
+    C_2 = C
+    C_3 = C * T
+    
+    P_123 = I (C_1, C_2 * diag(T * initDist), C_3)
+    
+    
+    P_21 = np.dot(C, np.dot(T, np.dot(np.diag(initDist), C.T)))
+    P_31 = np.dot(C, np.dot(T, np.dot(T, np.dot(np.diag(initDist), C.T))))
+    P_32 = np.dot(C, np.dot(T, np.dot(np.diag(np.dot(T,initDist)), C.T)))
+    P_23 = P_32.T
+    P_13 = P_31.T
+    
+    C_1 = np.dot(C, np.dot(np.diag(initDist), np.dot(T.T, np.linalg.inv(np.diag(np.dot(T, initDist))))))
+    C_1_tilde = np.dot(C, np.dot(np.diag(initDist), T.T))
+    C_2 = C
+    C_3 = np.dot(C, T)
+    P_123 = kernelNaiveBayes.trilinear('I', C_1.T, np.dot(C_2, np.diag(np.dot(T, initDist))).T, C_3.T);    
+    '''
+ 
+    C = gt_obs(phi, N, n, O);
+   
+    R_21 = C.dot(T.dot(np.diag(initDist).dot(C.T)))
+    R_31 = C.dot(T.dot(T.dot(np.diag(initDist).dot(C.T))))
+    R_32 = C.dot(T.dot(np.diag(T.dot(initDist)).dot(C.T)))
+    R_23 = R_32.T
+    R_13 = R_31.T
+    
+    C_1 = C.dot(np.diag(initDist).dot(T.T.dot(np.linalg.inv(np.diag(T.dot(initDist))))))
+    C_2 = C
+    C_3 = C.dot(T)
+    
+    R_123 = kernelNaiveBayes.trilinear('I', C_1.T, C_2.dot(np.diag(T.dot(initDist))).T, C_3.T);
+    
+    S_1 = C_2.dot(np.linalg.pinv(C_1))
+    S_3 = C_2.dot(np.linalg.pinv(C_3))
+
+    return R_21, R_31, R_23, R_13, R_123, C, S_1, S_3
+
 
 def range_cons(P, m):
-
     #print P
-
-    U, S, V = np.linalg.svd(P, full_matrices=False)
+    #np.random.randn(P.shape[0], P.shape[1])
+    U, S, V = np.linalg.svd(P, full_matrices=False)    
+    #print S
+    #print U[:,:m].shape
     return U[:,:m]
     
 
 def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
-    Q_21 = U.T * P_21 * U;
-    Q_31 = U.T * P_31 * U;
-    Q_23 = U.T * P_23 * U;
-    Q_13 = U.T * P_13 * U;
-    S_1 = Q_23 * np.linalg.inv(Q_21);
-    S_3 = Q_21 * np.linalg.inv(Q_23);
+
+    Q_21 = U.T.dot(P_21.dot(U));
+    Q_31 = U.T.dot(P_31.dot(U));
+    Q_23 = U.T.dot(P_23.dot(U));
+    Q_13 = U.T.dot(P_13.dot(U));
     
-    M_2 = S_1 * Q_21.T;
+    S_1 = Q_23.dot(np.linalg.inv(Q_13));
+    S_3 = Q_21.dot(np.linalg.inv(Q_31));
+    
+    M_2 = S_1.dot(Q_21.T);
     M_2 = (M_2 + M_2.T)/2;
     
     #print np.shape(P_123)
@@ -52,54 +105,224 @@ def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
     #Q_123 = np.tensordot(Q_123, U, axes=([2], [0]));  
     #M_3 = np.tensordot(Q_123, S_1, axes=([0], [1]));
     #M_3 = np.tensordot(M_3, S_3, axes=([2], [1]));
-    
-    M_3 = kernelNaiveBayes.trilinear(P_123, U*S_1.T, U, U*S_3.T)
+
+    M_3 = kernelNaiveBayes.trilinear(P_123, U.dot(S_1.T), U, U.dot(S_3.T))
 
     return M_2, M_3
     
 def phi_beta(x, N, n):
+    '''
+        Input: 
+            phi: feature map
+            [0..N]: possible values x can take
+            n: dimensionality of feature map  
+        Output:
+            beta-distribution encoding of phi(x)
+    '''
     #print x
     #print N
-    p = np.asarray(map(lambda t: pow(t, x) * pow(1-t, N-x), np.linspace(0.05,0.95,n).tolist()));
+    p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** N-x ), np.linspace(0.05,0.95,n).tolist()));
     return p / sum(p);
+    
+def phi_onehot(x, N, n):
+    '''
+        Input: 
+            phi: feature map
+            [0..N]: possible values x can take
+            n: dimensionality of feature map  
+        Output:
+            one hot encoding of phi(x)
+    '''
+    p = np.zeros(n);
+    p[int(x)] = 1
+    return p;
+    
+def gt_obs(phi, N, n, O):
+    '''
+        Input:
+            phi: feature map
+            [0..N]: possible values x can take
+            n: dimensionality of feature map  
+            O: one hot observation matrix
+        Output:
+            O_m: feature obseravtion matrix
+    '''
+    
+    Trans = np.zeros((n, N+1));
+    for x in xrange(N+1):
+        Trans[:,x] = phi(x, N, n).T
+        
+    O_m = Trans.dot(O);
+    return O_m;
+    
+def get_p(phi, N, n, O_h):
+    '''
+        Input:
+            phi: feature map
+            [0..N]: possible values x can take
+            n: dimensionality of feature map
+            O_h: estimated observation matrix
+        Output:
+            p_h: estimated methylating probability
+    '''
+    
+    if (phi == phi_onehot):
+        p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(O_h), axis = 0) / N
+    elif (phi == phi_beta):
+        p_h = ((N+1) * np.sum(np.diag(np.linspace(0.05,0.95,n)).dot(O_h), axis = 0) - 1) / N
+        
+    return p_h
+    
+def col_normalize(M):
+
+    return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
+    
+      
+def check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123):
+    print np.linalg.norm(P_21 - R_21)
+    print np.linalg.norm(P_31 - R_31)
+    print np.linalg.norm(P_23 - R_23)
+    print np.linalg.norm(P_13 - R_13)
+    print np.linalg.norm((P_123 - R_123).reshape((1,n*n*n)))
+    
+    
+def estimate(P_21, P_31, P_23, P_13, P_123, m):
+    U = range_cons(P_21, m);
+    M_2, M_3 = symmetrize(P_21, P_31, P_23, P_13, P_123, U);  
+    
+    W, X_3 = tentopy.whiten(M_2, M_3); 
+    Lambda, U_T_O = tentopy.reconstruct(W, X_3);
+    
+    O_h = np.dot(U, U_T_O.T) 
+    O_h = col_normalize(O_h)
+    
+    T_h = np.linalg.pinv(O_h).dot(P_21.dot(np.linalg.pinv(O_h.T)))
+    T_h = col_normalize(T_h)
+    
+    return O_h, T_h
+    
+def estimate_refine_binom(C_h, P_21, phi, N, n, m):
+    p_h = get_p(phi, N, n, C_h);
+    print 'p_h = '
+    print p_h
+    
+    O_h = generate_O_binom(m, N, p_h)
+    C_h_p = gt_obs(phi, N, n, O_h)
+    T_h_p = np.linalg.pinv(C_h_p).dot(P_21.dot(np.linalg.pinv(C_h_p.T)))
+    T_h_p = col_normalize(T_h_p)
+    
+    return C_h_p, T_h_p    
+
+
+def generate_p(m):
+    #p = np.asarray([0,0.5,1])
+    p = np.asarray([0.3,0.7])
+    #print p
+    
+    return p
+    
+    
+def generate_O_binom(m, N, p):
+    O = np.zeros((N+1, m));
+    
+    for i in xrange(N+1):
+        for j in xrange(m):
+            O[i,j] = special.binom(N, i) * (p[j] ** i) * ((1-p[j]) ** (N-i))
+       
+    return O
+
+
+def generate_O(m, N, min_sigma_o):
+
+    O = dataGenerator.makeObservationMatrix(m, N+1, min_sigma_o)
+    #O = np.eye(3);
+    #O = np.asarray([[0.5, 0], [0, 0.5], [0.5, 0.5]])
+    return O
+    
+    
+def generate_T(m, min_sigma_t):
+    #T = dataGenerator.makeTransitionMatrix(m, min_sigma_t)
+    #T = np.asarray([[0.9, 0.05, 0.05], [0.05, 0.9, 0.05], [0.05, 0.05, 0.9]]);
+    #T = np.eye(3);
+    T = np.asarray([[0.8, 0.2], [0.2, 0.8]])
+    
+    return T
+    
+def generate_initDist(m):
+    #initDist = dataGenerator.makeDistribution(m)
+    #initDist = np.asarray([0.33,0.33,0.34])
+    initDist = np.asarray([0.6, 0.4])
+    
+    return initDist
 
 if __name__ == '__main__':
 
-    N = 100
-    m = 10
-    l = 10000
-    min_sigma = 0.1
-    T = dataGenerator.makeTransitionMatrix(m, min_sigma)
-    initDist = dataGenerator.makeDistribution(m)
-    p = np.random.rand(m)
-    X = dataGenerator.generateData(N, m, T, p, initDist, l)
+    np.random.seed(0);
+    N = 50
+    m = 2
+    l = 50000
+    min_sigma_t = 0.7
+    min_sigma_o = 0.5
+    #n = 3;
+    n = 10;
+    
+    print 'Generating O and T..'
+    #O = generate_O(m, N, min_sigma_o);
+    p = generate_p(m);
+    print 'p = '
+    print p       
+    
+    O = generate_O_binom(m, N, p);
+    print 'O = '
+    print O     
+    
+    T = generate_T(m, min_sigma_t);
+    print 'T = '
+    print T
+    
+    initDist = generate_initDist(m);
+    print 'initDist = '
+    print initDist
+    
+    
+    print 'Generating Data..'
+    #X = dataGenerator.generateData_general(N+1, m, T, O, initDist, l)
+    #X = dataGenerator.generateData_firstFew(N, m, T, p, initDist, l)
     
 
-    P_21, P_31, P_23, P_13, P_123 = moments_cons(X, phi_beta, N, 20);
-    U = range_cons(P_21, m);
-    M_2, M_3 = symmetrize(P_21, P_31, P_23, P_13, P_123, U);
+    #phi = phi_onehot;
+    phi = phi_beta;
     
-    print np.shape(M_2)
-    print np.shape(M_3)
+    if phi == phi_onehot:
+        n = N + 1
+
+    #C = gt_obs(phi, N, n, O);
+
+    print 'Constructing Moments..'    
+    #P_21, P_31, P_23, P_13, P_123 = moments_cons(X, phi, N, n);
+    #P_21, P_31, P_23, P_13, P_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
+    R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
     
-    W, X_3 = tentopy.whiten(M_2, M_3);
+    print 'C = '
+    print C
     
-    print np.shape(W)
-    print np.shape(X_3)
-    Lambda, U_T_O = tentopy.reconstruct(W, X_3);
+    #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
     
-    #postprocessing
-    O = U * U_T_O;
-    O = O * np.linalg.inv(np.diag(np.sum(O, axis=0)))
+    print 'Estimating..'
+    #C_h, T_h = estimate(P_21, P_31, P_23, P_13, P_123, m)
+    C_h, T_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
+    print 'C_h = '
+    print C_h
     
-    p = ((N+1) * np.sum(np.diag(np.linspace(0,1,n)) * O) - 1) / N
+    print 'T_h = '
+    print T_h
     
-    print p
-    
-    
-    T = np.linalg.pinv(O) * P_21 * np.linalg.pinv(O.T)
-    T = T * np.linalg.inv(np.diag(np.sum(T, axis=0)))
-    
-    print T
+    #print 'Refining using Binomial Knowledge'
+    #C_h_p, T_h_p = estimate_refine_binom(C_h, P_21, phi, N, n, m)
+    #print 'C_h_p = '
+    #print C_h_p
+    #print 'T_h_p = '
+    #print T_h_p
+    #print get_p(phi, N, n, O_h)
     
     

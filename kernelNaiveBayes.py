@@ -220,9 +220,10 @@ def trilinear(T,W1,W2,W3):
   NT = xrange(W1.shape[0])
   X3 = tentopy.tensor_outer(np.zeros(len(N1)), 3)
   # TODO: figure out the equivalent numpy routines
-  if T=='I':
-    for (i1,i2,i3,j) in itertools.product(N1,N2,N3,NT):
-      X3[i1,i2,i3] += W1[j,i1] * W2[j,i2] * W3[j,i3]
+  if type(T) is str:
+    if T == 'I':
+        for (i1,i2,i3,j) in itertools.product(N1,N2,N3,NT):
+            X3[i1,i2,i3] += W1[j,i1] * W2[j,i2] * W3[j,i3]
   else:  
     for (i1,i2,i3,j1,j2,j3) in itertools.product(N1,N2,N3,NT,NT,NT):
       X3[i1,i2,i3] += T[j1,j2,j3] * W1[j1,i1] * W2[j2,i2] * W3[j3,i3]
