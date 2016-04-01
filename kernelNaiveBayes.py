@@ -162,8 +162,9 @@ def kernSpecAsymm(K,L,G,k):
   term1 = G*beta*Sroot
   #I_n = eye3(K.shape[0]) #create a third-order identity tensor
   T = (1./m)*trilinear('I', H*term1,H.T*term1,term1) 
-  (lambda0, M) = tentopy.eig(T,inner,outer) 
-  M = np.matrix(M[:,:k])
+  (M, lambda0) = tentopy.eig(T,inner,outer) 
+  M = M.T
+  M = np.matrix(M[:,:k]) 
   lambda0 = np.array(lambda0[:k]).flatten()
   A = beta*Sroot*np.matrix(M)*np.diag(lambda0)
   pi = np.power(lambda0,-2).T
@@ -193,7 +194,8 @@ def kernSpecSymm(K,L,k):
     chi_2 = term1*K[:,m+kk]
     chi_3 = term1*K[:,2*m+kk]
     T += symmetricTensor(chi_1,chi_2,chi_3)
-  (lambda0, M) = tentopy.eig(T,inner,outer)
+  (M, lambda0) = tentopy.eig(T,inner,outer)
+  M = M.T
   A = beta*np.power(S,-0.5)*M*np.diag(lambda0)
   pi = np.power(lambda0,-2).T
   return (A,pi)
