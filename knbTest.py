@@ -15,6 +15,7 @@ import numpy as np
 import scipy
 import scipy.spatial.distance
 import matplotlib.pyplot as plt
+import scipy.stats
 
 def initGaussMM(k,m, means=None,variances=None):
   """
@@ -47,7 +48,7 @@ def initGaussMM(k,m, means=None,variances=None):
   return X,H,means,variances
 
 def plot2(pXbarH,xRange,savepath='pdf.png'):
-# plot results
+  # plot results
   fig = plt.figure(figsize=(8,4))
   ax = fig.add_subplot(1,2,1); x = xRange; y = np.array(pXbarH[:,0].T).flatten()
   ax.scatter(x,y); ax.set_title('pdf of component h=0'); ax.set_xlabel("x")
@@ -56,15 +57,61 @@ def plot2(pXbarH,xRange,savepath='pdf.png'):
   ax.set_title('pdf of component h=1'); ax.set_xlabel("x"); ax.set_ylabel("pdf")
   fig.savefig(savepath)
 
+def plot3(pXbarH,xRange,truepdf,savepath='pdf.png'):
+  # plot results
+  fig = plt.figure(figsize=(8,4))
+  ax = fig.add_subplot(1,2,1); x = xRange; y = np.array(pXbarH[:,0].T).flatten()
+  ax.plot(x,y);
+  y = np.array(truepdf[:,0].T).flatten(); ax.plot(x,y)
+  ax.set_title('pdf of component h=0'); ax.set_xlabel("x")
+  ax.set_ylabel("pdf"); ax = fig.add_subplot(1,2,2); x = xRange; y = np.array(pXbarH[:,1].T).flatten()
+  ax.plot(x,y)
+  y = np.array(truepdf[:,1].T).flatten(); ax.plot(x,y)
+  ax.set_title('pdf of component h=1'); ax.set_xlabel("x"); ax.set_ylabel("pdf")
+  fig.savefig(savepath)
+
+
 k=2; #number of latent states
-X,H,means,variances = initGaussMM(k,10000,[1.5,-1],[0.4,0.4])
-xRange = np.matrix(np.linspace(min(means)-2*max(variances)**0.5,
-                               max(means)+2*max(variances)**0.5,500)).T #create 500 equally spaced samples for visualizing p(x|h)
-pXbarH = knb.kernXMM(X,k,xRange,var=.01) #compute p(x|h) estimate
-plot2(pXbarH,xRange,savepath='pdf.png')
+pXbarH = {}
+randinits = 100 #number of outer loop iterations (restarts) to run
+for i in range(randinits):
+    X,H,means,variances = initGaussMM(k,1000,means=[1.5,-1],variances=[0.4,0.4])
+    xRange = np.matrix(np.linspace(min(means)-2*max(variances)**0.5,
+                                   max(means)+2*max(variances)**0.5,500)).T #create 500 equally spaced samples for visualizing p(x|h)
+    pXbarH[i] = knb.kernXMM(X,k,xRange,var=.01) #compute p(x|h) estimate
+    
+sumprob = np.matrix(np.zeros(np.shape(pXbarH[0])))
+for i in pXbarH.keys():
+    map0 = xRange[np.argmax(pXbarH[i][:,0])]
+    if np.abs(map0-means[0])<np.abs(map0-means[1]):
+        sumprob +=pXbarH[i]
+    else:
+        for j in range(pXbarH[i].shape[0]):
+            sumprob[j,0] += max([0,np.matrix(pXbarH[i][j,1])])
+            sumprob[j,1] += max([0,np.matrix(pXbarH[i][j,0])])
+
+#scale the pdfs to make them comparable
+
+truepdf = np.zeros(pXbarH[0].shape)
+for kk in range(k):
+    for i,item in enumerate(xRange):
+        truepdf[i,kk] = scipy.stats.norm.pdf(item, means[kk],variances[kk])
+    
+for kk in range(k):
+    o = truepdf[:,kk].sum()
+    p = sumprob[:,kk].sum()
+    for i in range(len(xRange)):
+        truepdf[i,kk] = truepdf[i,kk]/o
+        sumprob[i,kk] = sumprob[i,kk]/p
+plot3(sumprob,xRange,truepdf,savepath='pdfcompare.png')
+
+    
+plot2(sumprob,xRange,savepath='pdf.png')
+
+
 #maximum a posteriori estimate of component 0:
 map0 = xRange[np.argmax(pXbarH[:,0])]
 #maximum a posterior estimate of component 1:
 map1 = xRange[np.argmax(pXbarH[:,1])]
 
-print 'Maximum a posteriori means:\t'+str(map0)+'\t'+str(map1) 
+print 'Maximum a posteriori means:\t'+str(map0)+'\t'+str(map1)
