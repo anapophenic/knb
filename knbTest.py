@@ -57,10 +57,10 @@ def plot2(pXbarH,xRange,savepath='pdf.png'):
   fig.savefig(savepath)
 
 k=2; #number of latent states
-X,H,means,variances = initGaussMM(k,1000,[1.5,-1],[0.4,0.4])
+X,H,means,variances = initGaussMM(k,10000,[1.5,-1],[0.4,0.4])
 xRange = np.matrix(np.linspace(min(means)-2*max(variances)**0.5,
                                max(means)+2*max(variances)**0.5,500)).T #create 500 equally spaced samples for visualizing p(x|h)
-pXbarH = knb.kernXMM2(X,k,xRange,var=.01) #compute p(x|h) estimate
+pXbarH = knb.kernXMM(X,k,xRange,var=.01) #compute p(x|h) estimate
 plot2(pXbarH,xRange,savepath='pdf.png')
 #maximum a posteriori estimate of component 0:
 map0 = xRange[np.argmax(pXbarH[:,0])]

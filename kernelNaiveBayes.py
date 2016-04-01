@@ -10,6 +10,7 @@
 ###############################################################################
 import numpy as np
 import scipy
+import scipy.sparse.linalg
 from scipy.spatial.distance import pdist,cdist,squareform
 import sys; sys.path.append('c:/users/e4gutier/documents/')
 import tentopy
@@ -164,14 +165,14 @@ def kernSpecAsymm(K,L,G,k):
   term1 = G*beta*Sroot
   #<<<<<<< HEAD
   #I_n = eye3(K.shape[0]) #create a third-order identity tensor
-  #T = (1./m)*trilinear('I', H*term1,H.T*term1,term1) 
-  #(M, lambda0) = tentopy.eig(T,inner,outer) 
-  #M = M.T
-  #M = np.matrix(M[:,:k]) 
+  T = (1./m)*trilinear('I', H*term1,H.T*term1,term1) 
+  (M, lambda0) = tentopy.eig(T,inner,outer) 
+  M = M.T
+  M = np.matrix(M[:,:k]) 
   #=======
-  T = trilinear('I', H*term1,H.T*term1,term1)/m
-  (lambda0, M) = tentopy.eig(T,inner,outer) 
-  M = np.matrix(M[:,:k])
+  #T = trilinear('I', H*term1,H.T*term1,term1)/m
+  #(lambda0, M) = tentopy.eig(T,inner,outer) 
+  #M = np.matrix(M[:,:k])
   #>>>>>>> 18d266d014690253b6e4548270ad48cec7bd013c
   lambda0 = np.array(lambda0[:k]).flatten()
   A = beta*Sroot*M*np.diag(lambda0)
