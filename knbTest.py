@@ -48,12 +48,12 @@ def initGaussMM(k,m, means=None,variances=None):
 
 def plot2(pXbarH,xRange,savepath='pdf.png'):
 # plot results
-  fig = plt.figure()
-  ax = fig.add_subplot(1,2,1); x = xRange; y = np.array(pXbarH[:,0].T).flatten()*10e23
-  ax.scatter(x,y); ax.set_title('scaled prob density of component h=0'); ax.set_xlabel("x")
-  ax.set_ylabel("scaled pdf"); ax = fig.add_subplot(1,2,2); x = xRange; y = np.array(pXbarH[:,1].T).flatten()*10e23
+  fig = plt.figure(figsize=(8,4))
+  ax = fig.add_subplot(1,2,1); x = xRange; y = np.array(pXbarH[:,0].T).flatten()
+  ax.scatter(x,y); ax.set_title('pdf of component h=0'); ax.set_xlabel("x")
+  ax.set_ylabel("pdf"); ax = fig.add_subplot(1,2,2); x = xRange; y = np.array(pXbarH[:,1].T).flatten()
   ax.scatter(x,y)
-  ax.set_title('scaled prob density of component h=1'); ax.set_xlabel("x"); ax.set_ylabel("scaled pdf")
+  ax.set_title('pdf of component h=1'); ax.set_xlabel("x"); ax.set_ylabel("pdf")
   fig.savefig(savepath)
 
 k=2; #number of latent states
