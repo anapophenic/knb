@@ -152,23 +152,52 @@ def kernSpecAsymm(K,L,G,k):
   """
   K,L,G = np.matrix(K), np.matrix(L), np.matrix(G)
   m = K.shape[1]  # number of samples per view
-  Knk = np.matrix(np.linalg.eig(K)[1][:,:k]).real # principal eigenvectors of K
-  Lnk = np.matrix(np.linalg.eig(L)[1][:,:k]).real # Principal eigenvectors of L
+  S, beta = sortedEig(K*L*K/(m**2),K,k,10e-4)
+  t1 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)
+  S, beta = sortedEig(L*K*L/(m**2),L,k,10e-4)#Lnk = L*np.matrix(sortedEig(L*K*L,L,k)[1].real)
+  t2 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)  
+  Knk = K*t1; Lnk = L*t2  
   H = Knk*np.linalg.inv(Lnk.T*Knk)*Lnk.T #Symmetrization matrix
-  (S,beta) = scipy.linalg.eig(G*H.T*G*H*G/(m**2),G) #find generalized eigenvectors
-  S,beta=S.real,beta.real
-  Sroot = np.matrix(np.diag(np.power(S[:k],-0.5))) 
-  beta = np.matrix(beta[:,:k]) #matrix of k leading eigenvectors
+  (S,beta) = sortedEig(G*H.T*G*H*G/(m**2),G,k,10e-4) #find generalized eigenvectors
+  S,beta=S.real,np.matrix(beta.real)
+  Sroot = np.matrix(np.diag(np.power(S,-0.5))) 
   term1 = G*beta*Sroot
-  #I_n = eye3(K.shape[0]) #create a third-order identity tensor
-  T = (1./m)*trilinear('I', H*term1,H.T*term1,term1) 
+  T = trilinear('I', H*term1,H.T*term1,term1)/m
   (lambda0, M) = tentopy.eig(T,inner,outer) 
   M = np.matrix(M[:,:k])
   lambda0 = np.array(lambda0[:k]).flatten()
-  A = beta*Sroot*np.matrix(M)*np.diag(lambda0)
+  A = beta*Sroot*M*np.diag(lambda0)
   pi = np.power(lambda0,-2).T
   return (A,pi)
 
+def sortedEig(X,M=None,k=None, lambda0=0):
+  """
+    Return the k largest eigenvalues and the corresponding eigenvectors of the
+    solution to X*u = b*M*u
+    Inputs:
+      X: matrix
+      M: matrix
+      k: (int) if k is None, return all but one.
+      lambda: (float)  regularization parameter to ensure positive definiteness so cholesky decomposition works
+    Outputs:
+     b: vetor of eigenvalues
+     U: matrix of eigenvectors; each column is an eigenvector
+  """
+  if k is None:
+    k = X.shape[0]
+    if M is None:
+      (b,U) = scipy.linalg.eig(X)
+    else:
+      (b,U) = scipy.linalg.eig(X,M+lambda0*np.eye(M.shape[0]))
+    idx = b.argsort()[-k:][::-1]
+    return b[idx], U[:,idx]
+  else:
+    if M is None:
+        (b,U) = scipy.sparse.linalg.eigsh(X,k)
+    else:
+        (b,U) = scipy.sparse.linalg.eigsh(X,k,M+lambda0*np.eye(M.shape[0]))
+  return b,U
+  
 def kernSpecSymm(K,L,k):
   """
   Kernel Spectral Algorithm (Algorithm 1 from Song et al. (2014)) for symmetric
