@@ -38,7 +38,7 @@ def initGaussMM(k,m, means=None,variances=None):
     means = []
     variances = []
     for kk in range(k):
-      means.append(10*float(kk))
+      means.append(float(kk))
       variances.append(0.1*(kk+1))
   for mm in range(m):
     H[mm] = int(np.random.randint(0,k))
@@ -46,27 +46,25 @@ def initGaussMM(k,m, means=None,variances=None):
       X[mm,j] = np.random.normal(means[H[mm]],variances[H[mm]])
   return X,H,means,variances
 
-if True:
-    k=2; 
-    X,H,means,variances = initGaussMM(k,1000)
-    xRange = np.matrix(np.linspace(-2,3,500)).T #create 500 equally spaced samples in range [-2,3] for visualizing p(x|h)
-    pXbarH = knb.kernXMM(X,k,xRange,var=0.1) #compute p(x|h) estimate
-    
-    print pXbarH
-    
-    # plot results
-    fig = plt.figure()
-    ax = fig.add_subplot(1,2,1)
+def plot2(pXbarH,xRange,savepath='pdf.png'):
+# plot results
+  fig = plt.figure(figsize=(8,4))
+  ax = fig.add_subplot(1,2,1); x = xRange; y = np.array(pXbarH[:,0].T).flatten()
+  ax.scatter(x,y); ax.set_title('pdf of component h=0'); ax.set_xlabel("x")
+  ax.set_ylabel("pdf"); ax = fig.add_subplot(1,2,2); x = xRange; y = np.array(pXbarH[:,1].T).flatten()
+  ax.scatter(x,y)
+  ax.set_title('pdf of component h=1'); ax.set_xlabel("x"); ax.set_ylabel("pdf")
+  fig.savefig(savepath)
 
-    m=1000;x = xRange[:m]; y = np.array(pXbarH[:m,0].T).flatten()*10e23
-    ax.scatter(x,y)
-    ax.set_title('scaled prob density of component h=0')
-    ax.set_xlabel("x")
-    ax.set_ylabel("scaled pdf")
-    ax = fig.add_subplot(1,2,2)
-    m=1000;x = xRange[:m]; y = np.array(pXbarH[:m,1].T).flatten()*10e23
-    ax.scatter(x,y)
-    ax.set_title('scaled prob density of component h=1')
-    ax.set_xlabel("x")
-    ax.set_ylabel("scaled pdf")
-    fig.savefig("pdf.png")
+k=2; #number of latent states
+X,H,means,variances = initGaussMM(k,1000,[1.5,-1],[0.4,0.4])
+xRange = np.matrix(np.linspace(min(means)-2*max(variances)**0.5,
+                               max(means)+2*max(variances)**0.5,500)).T #create 500 equally spaced samples for visualizing p(x|h)
+pXbarH = knb.kernXMM2(X,k,xRange,var=.01) #compute p(x|h) estimate
+plot2(pXbarH,xRange,savepath='pdf.png')
+#maximum a posteriori estimate of component 0:
+map0 = xRange[np.argmax(pXbarH[:,0])]
+#maximum a posterior estimate of component 1:
+map1 = xRange[np.argmax(pXbarH[:,1])]
+
+print 'Maximum a posteriori means:\t'+str(map0)+'\t'+str(map1) 
