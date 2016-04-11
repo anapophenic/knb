@@ -51,7 +51,6 @@ def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
   Inputs:
      X: D x 3 matrix with m observatioons from each of 3 views
      k: rank of model (number of hidden states)
-
   Optional inputs:
      queryX: D_test x 1 matrix of test points for which to comptue p(x|h). If 
              queryX is None, queryX is set to X[:,2]
@@ -139,41 +138,48 @@ def computeKerns(X,kernel,symmetric, var=1):
   else:
     return (K[:-2,:-2],K[1:-1,1:-1],K[2:,2:])
   
-def kernSpecAsymm(K,L,G,k):
+def kernSpecAsymm(K,L,G,k,view=2,lambda0=1e-2):
   """
   Algorithm 1 from Song et al. (2014). adapted to asymmetric view
   Inputs:
-  K: kernel matrix from view 1 of shape (m x m)
-  L: kernel matrix from view 2 of shape (m x m)
-  G: kernel matrix from view 3 of shape (m x m)
-  k: desired rank (number of hidden states)
+  *K: kernel matrix from view 1 of shape (m x m)
+  *L: kernel matrix from view 2 of shape (m x m)
+  *G: kernel matrix from view 3 of shape (m x m)
+  *k: desired rank (number of hidden states)
+  *view: (int) which view to learn (either 1,2, or 3)
+  *lambda0: (float) regularization parameter
   Outputs:
-  A: matrix of shape m x k
-  pi: vector of shape k
+  *A: matrix of shape m x k
+  *pi: vector of shape k
   """
   K,L,G = np.matrix(K), np.matrix(L), np.matrix(G)
   m = K.shape[1]  # number of samples per view
-  S, beta = sortedEig(K*L*K/(m**2),K,k,10e-4)
-  t1 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)
-  S, beta = sortedEig(L*K*L/(m**2),L,k,10e-4)#Lnk = L*np.matrix(sortedEig(L*K*L,L,k)[1].real)
-  t2 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)  
-  Knk = K*t1; Lnk = L*t2  
-  H = Knk*np.linalg.inv(Lnk.T*Knk)*Lnk.T #Symmetrization matrix
-  (S,beta) = sortedEig(G*H.T*G*H*G/(m**2),G,k,10e-4) #find generalized eigenvectors
-  S,beta=S.real,np.matrix(beta.real)
-  Sroot = np.matrix(np.diag(np.power(S,-0.5))) 
-  term1 = G*beta*Sroot
-  #<<<<<<< HEAD
-  #I_n = eye3(K.shape[0]) #create a third-order identity tensor
-  T = (1./m)*trilinear('I', H*term1,H.T*term1,term1) 
-  (M, lambda0) = tentopy.eig(T,inner,outer) 
-  M = M.T
-  M = np.matrix(M[:,:k]) 
-  #=======
-  #T = trilinear('I', H*term1,H.T*term1,term1)/m
-  #(lambda0, M) = tentopy.eig(T,inner,outer) 
-  #M = np.matrix(M[:,:k])
-  #>>>>>>> 18d266d014690253b6e4548270ad48cec7bd013c
+  if view==2:
+    S, beta = sortedEig(K*G*K/(m**2),K,k,lambda0)  
+    t1 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)
+    S, beta = sortedEig(G*K*G/(m**2),G,k,lambda0)#Lnk = L*np.matrix(sortedEig(L*K*L,L,k)[1].real)
+    t2 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)
+    Knk = K*t1; Gnk = G*t2
+    H = Gnk*np.linalg.inv(Knk.T*Gnk)*Knk.T  #NEEDS TO BE VERIFIED
+    (S,beta) = sortedEig(L*H.T*L*H*L/(m**2),L,k,lambda0) #find generalized eigenvectors
+    S,beta=S.real,np.matrix(beta.real)
+    Sroot = np.matrix(np.diag(np.power(S,-0.5))) 
+    term1 = L*beta*Sroot
+    T = trilinear('I', H.T*term1,term1, H*term1)/m  
+  elif view==3:
+    S, beta = sortedEig(K*L*K/(m**2),K,k,lambda0)
+    t1 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)
+    S, beta = sortedEig(L*K*L/(m**2),L,k,lambda0)#Lnk = L*np.matrix(sortedEig(L*K*L,L,k)[1].real)
+    t2 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)  
+    Knk = K*t1; Lnk = L*t2  
+    H = Knk*np.linalg.inv(Lnk.T*Knk)*Lnk.T #Symmetrization matrix
+    (S,beta) = sortedEig(G*H.T*G*H*G/(m**2),G,k,lambda0) #find generalized eigenvectors
+    S,beta=S.real,np.matrix(beta.real)
+    Sroot = np.matrix(np.diag(np.power(S,-0.5))) 
+    term1 = G*beta*Sroot
+    T = trilinear('I', H*term1,H.T*term1,term1)/m
+  (lambda0, M) = tentopy.eig(T,inner,outer) 
+  M = np.matrix(M[:,:k])
   lambda0 = np.array(lambda0[:k]).flatten()
   A = beta*Sroot*M*np.diag(lambda0)
   pi = np.power(lambda0,-2).T
@@ -187,7 +193,8 @@ def sortedEig(X,M=None,k=None, lambda0=0):
       X: matrix
       M: matrix
       k: (int) if k is None, return all but one.
-      lambda: (float)  regularization parameter to ensure positive definiteness so cholesky decomposition works
+      lambda0: (float) regularization parameter to ensure positive definiteness
+            so that cholesky decomposition works
     Outputs:
      b: vetor of eigenvalues
      U: matrix of eigenvectors; each column is an eigenvector
@@ -231,8 +238,7 @@ def kernSpecSymm(K,L,k):
     chi_2 = term1*K[:,m+kk]
     chi_3 = term1*K[:,2*m+kk]
     T += symmetricTensor(chi_1,chi_2,chi_3)
-  (M, lambda0) = tentopy.eig(T,inner,outer)
-  M = M.T
+  (lambda0, M) = tentopy.eig(T,inner,outer)
   A = beta*np.power(S,-0.5)*M*np.diag(lambda0)
   pi = np.power(lambda0,-2).T
   return (A,pi)
@@ -268,6 +274,15 @@ def trilinear(T,W1,W2,W3):
       X3[i1,i2,i3] += T[j1,j2,j3] * W1[j1,i1] * W2[j2,i2] * W3[j3,i3]
   return X3
 
+def medianTrick(X,kernel='gaussian'):
+    """
+    Implementation of the median trick for bandwidth selection from Gretton et
+    al (2006) NIPS paper.
+    Set var = 0.5*(median(|X_i-X_j|)[:])**2,i != j (TODO: check this condition)
+    """
+    if kernel=='gaussian':
+        return 0.5*np.median(pdist(X,'sqeuclidean'))
+    
 def computeKerns3(X,kernel,symmetric, var=1):
   """
   Compute the kernel for samples from 3 views
