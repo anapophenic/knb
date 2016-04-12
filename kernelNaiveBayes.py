@@ -1,11 +1,11 @@
 ###############################################################################
 # Implementation of kernel multi-view spectral algorithm of Song et al. (2014)
 #
-# Author: E.D. Gutierrez (edg@icsi.berkeley.edu)
-# Created: 24 March 2016
-# Last modified: 29 March 2016
+# Author: Chicheng Zhang, E.D. Gutierrez (edg@icsi.berkeley.edu)
+# Created: 24 Mar 2016
+# Last modified: 12 Apr 2016
 #
-# Sample usage: see knbTest.py.  The main functions are kernHMM and kernXMM
+# Example usage: see knbTest.py.  The main functions are kernHMM and kernXMM
 # 
 ###############################################################################
 import numpy as np
@@ -21,9 +21,11 @@ inner, outer = 100,100  #number of inner and outer iterations for tensor power m
 
 pdist2 = lambda X,Y: squareform(pdist(X,Y)) #compute square form of pairwise distances
 
+# <codecell>
+
 def kernHMM(X,k,kernel='gaussian',symmetric=False,var=1, xRange=None):
   """
-  Main function for learning Hidden Markov Model.
+  Main function for learning Hidden Markov Model with D-dimensional obs.
   Inputs:
      X: D x (m+2) matrix with m+2 samples of dimension D 
      k: rank of model (number of hidden states)
@@ -44,6 +46,8 @@ def kernHMM(X,k,kernel='gaussian',symmetric=False,var=1, xRange=None):
   else:
     pXbarH = crossComputeKerns(xRange,np.matrix(X)[2:,:])*A
   return pXbarH  
+
+# <codecell>
 
 def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
   """
@@ -70,6 +74,47 @@ def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
   else: 
     pXbarH = crossComputeKerns(queryX,np.matrix(X[:,2]).T,kernel,symmetric,var)*A
   return pXbarH  
+  
+# <codecell>
+
+def phi_beta(x, N, n):
+    '''
+        Input: 
+            x: input (observation) vector
+            [0..N]: possible values x can take
+            n: dimensionality of feature map  
+        Output:
+            phi: beta-distribution encoding of phi(x)
+    '''
+    
+    p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** N-x ), 
+                       np.linspace(0.05,0.95,n).tolist()));
+    return p / sum(p);
+    
+# <codecell>
+    
+def returnKernel(kernel, var=1):
+  """
+  Utility function to return the correct kernel function given a string 
+  identifying the name of the kernel
+  """
+  kernel = kernel.lower()
+  if kernel in ['gaussian','normal','l2']:
+    kern = lambda XX: np.exp(-pdist2(XX,'sqeuclidean')/var)
+  elif kernel in ['laplace','laplacian','l1']:
+    kern = lambda XX:  np.exp(-pdist2(XX,'minkowski',1)/var)
+  elif kernel in ['dirac', 'delta','kronecker']:
+    equals = lambda u,v: 1 - (np.array(u)==np.array(v)).all()
+    kern = lambda XX: pdist2(XX,equals)
+  elif kernel in ['mahalanobis']:
+    VInv = np.inv(var)
+    kern = lambda XX: np.exp(-np.power(pdist2(XX,'mahalanobis',VInv),2))
+  elif kernel in ['beta']:
+    dot = lambda XX: XX.dot(XX)
+    kern = lambda XX: dot(phi_beta(XX))
+  return kern
+
+# <codecell>
   
 def crossComputeKerns(X,Y,kernel,symmetric,var=1):
   """
@@ -100,12 +145,16 @@ def crossComputeKerns(X,Y,kernel,symmetric,var=1):
   elif kernel in ['mahalanobis']:
     VInv = np.inv(var)
     kern = lambda XX,YY: np.exp(-np.power(cdist(XX,YY,'mahalanobis',VInv),2))
+  elif kernel in ['beta','betadot']:
+    kern = lambda XX,YY: phi_beta(XX).T.dot(phi_beta(YY))
   K = kern(X,Y)   
   return K
+
+# <codecell>
     
 def computeKerns(X,kernel,symmetric, var=1):
   """
-  Compute pairwise kernels between points in matrix
+  Compute pairwise kernels between D-dimensional points arranged into a matrix
   Inputs:
      X: m x D matrix with m samples of dimension D 
      kernel: (string) name of kernel being computed
@@ -121,22 +170,38 @@ def computeKerns(X,kernel,symmetric, var=1):
      L: kernel matrix of second view
      G: kernel matrix of third view
   """
-  kernel = kernel.lower()
-  if kernel in ['gaussian','normal','l2']:
-    kern = lambda XX: np.exp(-pdist2(XX,'sqeuclidean')/var)
-  elif kernel in ['laplace','laplacian','l1']:
-    kern = lambda XX:  np.exp(-pdist2(XX,'minkowski',1)/var)
-  elif kernel in ['dirac', 'delta','kronecker']:
-    equals = lambda u,v: 1 - (np.array(u)==np.array(v)).all()
-    kern = lambda XX: pdist2(XX,equals)
-  elif kernel in ['mahalanobis']:
-    VInv = np.inv(var)
-    kern = lambda XX: np.exp(-np.power(pdist2(XX,'mahalanobis',VInv),2))
+  kern = returnKernel(kernel,var)
   K = kern(X)   
   if symmetric:
     return (K[:-1,:-1], K[1:,1:], None)
   else:
     return (K[:-2,:-2],K[1:-1,1:-1],K[2:,2:])
+
+# <codecell>
+    
+def computeKerns3(X,kernel,symmetric, var=1):
+  """
+  Compute the kernel for samples from 3 views
+  Inputs:
+     X: D x m matrix with m samples and 3 views
+     kernel: (string) name of kernel being computed
+     k: (int) rank of model (number of hidden states)
+     symmetric: whether the model has symmetric views or not (should be false
+          for HMM)
+     var: for gaussian kernel, the variance (sigma^2)
+      for laplacian kernel, the bandwidth
+      for mahalanobis kernel, the covariance matrix
+      for delta kernel, None
+  Outputs: tuple (K,L,G), where:
+     K: kernel matrix of first view
+     L: kernel matrix of second view
+     G: kernel matrix of third view
+  """
+  kern = returnKernel(kernel,var)
+  X0,X1,X2 = np.matrix(X[:,0]).T,np.matrix(X[:,1]).T, np.matrix(X[:,2]).T
+  return (kern(X0),kern(X1),kern(X2))
+
+# <codecell>
   
 def kernSpecAsymm(K,L,G,k,view=2,lambda0=1e-2):
   """
@@ -185,6 +250,8 @@ def kernSpecAsymm(K,L,G,k,view=2,lambda0=1e-2):
   pi = np.power(lambda0,-2).T
   return (A,pi)
 
+# <codecell>
+
 def sortedEig(X,M=None,k=None, lambda0=0):
   """
     Return the k largest eigenvalues and the corresponding eigenvectors of the
@@ -213,6 +280,8 @@ def sortedEig(X,M=None,k=None, lambda0=0):
     else:
         (b,U) = scipy.sparse.linalg.eigsh(X,k,M+lambda0*np.eye(M.shape[0]))
   return b,U
+
+# <codecell>
   
 def kernSpecSymm(K,L,k):
   """
@@ -243,6 +312,8 @@ def kernSpecSymm(K,L,k):
   pi = np.power(lambda0,-2).T
   return (A,pi)
   
+# <codecell>
+
 def trilinear(T,W1,W2,W3):
   """
   Compute trilinear form T(W1,W2,W3).  If T=='I', it is taken to be the third-
@@ -274,6 +345,8 @@ def trilinear(T,W1,W2,W3):
       X3[i1,i2,i3] += T[j1,j2,j3] * W1[j1,i1] * W2[j2,i2] * W3[j3,i3]
   return X3
 
+# <codecell>
+
 def medianTrick(X,kernel='gaussian'):
     """
     Implementation of the median trick for bandwidth selection from Gretton et
@@ -282,38 +355,8 @@ def medianTrick(X,kernel='gaussian'):
     """
     if kernel=='gaussian':
         return 0.5*np.median(pdist(X,'sqeuclidean'))
-    
-def computeKerns3(X,kernel,symmetric, var=1):
-  """
-  Compute the kernel for samples from 3 views
-  Inputs:
-     X: D x m matrix with m samples and 3 views
-     kernel: (string) name of kernel being computed
-     k: (int) rank of model (number of hidden states)
-     symmetric: whether the model has symmetric views or not (should be false
-          for HMM)
-     var: for gaussian kernel, the variance (sigma^2)
-      for laplacian kernel, the bandwidth
-      for mahalanobis kernel, the covariance matrix
-      for delta kernel, None
-  Outputs: tuple (K,L,G), where:
-     K: kernel matrix of first view
-     L: kernel matrix of second view
-     G: kernel matrix of third view
-  """
-  kernel = kernel.lower()
-  if kernel in ['gaussian','normal','l2']:
-    kern = lambda XX: np.exp(-pdist2(XX,'sqeuclidean')/var)
-  elif kernel in ['laplace','laplacian','l1']:
-    kern = lambda XX:  np.exp(-pdist2(XX,'minkowski',1)/var)
-  elif kernel in ['dirac', 'delta','kronecker']:
-    equals = lambda u,v: 1 - (np.array(u)==np.array(v)).all()
-    kern = lambda XX: pdist2(XX,equals)
-  elif kernel in ['mahalanobis']:
-    VInv = np.inv(var)
-    kern = lambda XX: np.exp(-np.power(pdist2(XX,'mahalanobis',VInv),2))  
-  X0,X1,X2 = np.matrix(X[:,0]).T,np.matrix(X[:,1]).T, np.matrix(X[:,2]).T
-  return (kern(X0),kern(X1),kern(X2))
+
+# <codecell>
 
 def symmetricTensor(a,b,c):
   """
