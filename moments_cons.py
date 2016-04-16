@@ -109,7 +109,27 @@ def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
     M_3 = kernelNaiveBayes.trilinear(P_123, U.dot(S_1.T), U, U.dot(S_3.T))
 
     return M_2, M_3
+
+def phi_beta_shifted(x, N, n):
+    '''
+        Input: 
+            phi: feature map
+            [0..N]: possible values x can take
+            n: dimensionality of feature map  
+        Output:
+            beta-distribution encoding of phi(x)
+    '''
+    #print x
+    #print N
+    i = int(x / (N+1)) + 1;
+    k = int(x) % (N+1); 
+    if k > i:
+        return np.zeros(n)
     
+    p = np.asarray(map(lambda t: (t ** k) * ( (1-t) ** (i - k) ), unif_partition(n).tolist()));
+    return p / sum(p);
+
+
 def phi_beta(x, N, n):
     '''
         Input: 
@@ -121,7 +141,7 @@ def phi_beta(x, N, n):
     '''
     #print x
     #print N
-    p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** N-x ), np.linspace(0.05,0.95,n).tolist()));
+    p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** (N-x) ), unif_partition(n).tolist()));
     return p / sum(p);
     
 def phi_onehot(x, N, n):
@@ -148,30 +168,55 @@ def gt_obs(phi, N, n, O):
             O_m: feature obseravtion matrix
     '''
     
-    Trans = np.zeros((n, N+1));
-    for x in xrange(N+1):
-        Trans[:,x] = phi(x, N, n).T
+    if ((phi == phi_onehot) or (phi == phi_beta)):
+        Trans = np.zeros((n, N+1));
+        for x in xrange(N+1):
+            Trans[:,x] = phi(x, N, n).T
+    elif phi == phi_beta_shifted:
+        Trans = np.zeros((n, N*(N+1)));
+        for x in xrange(N*(N+1)):
+            Trans[:,x] = phi(x, N, n).T
+    
+    #print 'Trans = '
+    #print Trans
+    #print 'O = '
+    #print O    
         
     O_m = Trans.dot(O);
     return O_m;
+
+def get_a(N):
+    return sum(map(lambda n: 1.0/(n+2), range(1,N+1,1))) / N
     
-def get_p(phi, N, n, O_h):
+def unif_partition(n):
+    return np.linspace(1.0/(n+1),1.0*n/(n+1),n)
+    
+def get_O(phi, N, n, C_h):
     '''
         Input:
             phi: feature map
             [0..N]: possible values x can take
             n: dimensionality of feature map
-            O_h: estimated observation matrix
+            C_h: estimated observation matrix
         Output:
             p_h: estimated methylating probability
     '''
     
     if (phi == phi_onehot):
-        p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(O_h), axis = 0) / N
+        p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
+        O_h = generate_O_binom(m, N, p_h)
     elif (phi == phi_beta):
-        p_h = ((N+1) * np.sum(np.diag(np.linspace(0.05,0.95,n)).dot(O_h), axis = 0) - 1) / N
+        p_h = ((N+1) * np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - 1) / N
+        O_h = generate_O_binom(m, N, p_h)
+    elif (phi == phi_beta_shifted):
+        a = get_a(N)
+        p_h = (np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
+        O_h = generate_O_stochastic_N(m, N, p_h)
         
-    return p_h
+    print 'p_h = ' 
+    print p_h   
+        
+    return O_h
     
 def col_normalize(M):
 
@@ -201,12 +246,9 @@ def estimate(P_21, P_31, P_23, P_13, P_123, m):
     
     return O_h, T_h
     
-def estimate_refine_binom(C_h, P_21, phi, N, n, m):
-    p_h = get_p(phi, N, n, C_h);
-    print 'p_h = '
-    print p_h
+def estimate_refine(C_h, P_21, phi, N, n, m):    
     
-    O_h = generate_O_binom(m, N, p_h)
+    O_h = get_O(phi, N, n, C_h)
     C_h_p = gt_obs(phi, N, n, O_h)
     T_h_p = np.linalg.pinv(C_h_p).dot(P_21.dot(np.linalg.pinv(C_h_p.T)))
     T_h_p = col_normalize(T_h_p)
@@ -230,6 +272,21 @@ def generate_O_binom(m, N, p):
             O[i,j] = special.binom(N, i) * (p[j] ** i) * ((1-p[j]) ** (N-i))
        
     return O
+    
+    
+def generate_O_stochastic_N(m, N, p):
+    O = np.zeros((N*(N+1), m))
+    
+    # n = i possibly take value 1,...,N
+    # x = j possibly take value 0,...,N (0, .., i)
+    
+    for i in xrange(N):
+        for k in xrange(i+2):
+            for j in xrange(m): 
+                O[(N+1)*i + k, j] = special.binom((i+1), k) * (p[j] ** k) * ((1-p[j]) ** (i+1-k)) / N
+                
+    return O
+    
 
 
 def generate_O(m, N, min_sigma_o):
@@ -257,14 +314,15 @@ def generate_initDist(m):
 
 if __name__ == '__main__':
 
+
     np.random.seed(0);
-    N = 50
+    N = 3
     m = 2
-    l = 50000
+    l = 20000
     min_sigma_t = 0.7
     min_sigma_o = 0.5
     #n = 3;
-    n = 10;
+    n = 100;
     
     print 'Generating O and T..'
     #O = generate_O(m, N, min_sigma_o);
@@ -272,7 +330,8 @@ if __name__ == '__main__':
     print 'p = '
     print p       
     
-    O = generate_O_binom(m, N, p);
+    #O = generate_O_binom(m, N, p);
+    O = generate_O_stochastic_N(m, N, p);
     print 'O = '
     print O     
     
@@ -286,12 +345,14 @@ if __name__ == '__main__':
     
     
     print 'Generating Data..'
+    X = dataGenerator.generateData_general(N*(N+1), m, T, O, initDist, l)
     #X = dataGenerator.generateData_general(N+1, m, T, O, initDist, l)
     #X = dataGenerator.generateData_firstFew(N, m, T, p, initDist, l)
     
 
     #phi = phi_onehot;
-    phi = phi_beta;
+    #phi = phi_beta;
+    phi = phi_beta_shifted;
     
     if phi == phi_onehot:
         n = N + 1
@@ -299,7 +360,7 @@ if __name__ == '__main__':
     #C = gt_obs(phi, N, n, O);
 
     print 'Constructing Moments..'    
-    #P_21, P_31, P_23, P_13, P_123 = moments_cons(X, phi, N, n);
+    P_21, P_31, P_23, P_13, P_123 = moments_cons(X, phi, N, n);
     #P_21, P_31, P_23, P_13, P_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
     R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
     
@@ -309,20 +370,20 @@ if __name__ == '__main__':
     #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
     
     print 'Estimating..'
-    #C_h, T_h = estimate(P_21, P_31, P_23, P_13, P_123, m)
-    C_h, T_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
+    C_h, T_h = estimate(P_21, P_31, P_23, P_13, P_123, m)
+    #C_h, T_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
     print 'C_h = '
     print C_h
     
     print 'T_h = '
     print T_h
     
-    #print 'Refining using Binomial Knowledge'
-    #C_h_p, T_h_p = estimate_refine_binom(C_h, P_21, phi, N, n, m)
+    print 'Refining using Binomial Knowledge'
+    C_h_p, T_h_p = estimate_refine(C_h, R_21, phi, N, n, m)
     #print 'C_h_p = '
     #print C_h_p
     #print 'T_h_p = '
     #print T_h_p
     #print get_p(phi, N, n, O_h)
-    
+   
     

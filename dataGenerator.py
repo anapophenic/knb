@@ -178,15 +178,38 @@ def generateData_general(N, numState, T, O, initDist, l):
     return data
 
 # <codecell>
-
-N = 10
+'''
+# Make HMM
+N = 3 #10
 numObs = N+1
-numState = 5
-l = 10000
-min_sigma = 0.1
+numState = 2 #5
+l = 100
+min_sigma = 0.5 #0.1
 T = makeTransitionMatrix(numState, min_sigma)
 O = makeObservationMatrix(numState, numObs, min_sigma)
 initDist = makeDistribution(numState)
-#p = np.random.rand(numState)
 Data = generateData_general(N, numState, T, O, initDist, l)
 
+#Learn HMM
+xRange = np.matrix(np.linspace(Data.min(),Data.max(),numObs)).T 
+import kernelNaiveBayes as knb
+noise = np.random.rand(Data.shape[0],Data.shape[1])/1e3 #jiggle the data points a little bit to improve conditioning
+O_hat = knb.kernXMM(Data+noise,2,xRange,var=0.5)
+
+#Plot results for comparison
+fig = plt.figure(figsize=(8,4))
+ax = fig.add_subplot(1,2,1)
+ax.plot(xRange,O_hat[:,0])
+ax.set_title('pdf of component h=0'); ax.set_xlabel("x");ax.set_ylabel("est pdf"); 
+ax = fig.add_subplot(1,2,2);
+ax.plot(xRange,O_hat[:,0])
+ax.set_title('pdf of component h=0'); ax.set_xlabel("x");ax.set_ylabel("est pdf"); 
+
+fig = plt.figure(figsize=(8,4))
+ax = fig.add_subplot(1,2,1)
+ax.plot(xRange,O[:,0])
+ax.set_title('pdf of component h=0'); ax.set_xlabel("x");ax.set_ylabel("true pdf"); 
+ax = fig.add_subplot(1,2,2);
+ax.plot(xRange,O[:,0])
+ax.set_title('pdf of component h=0'); ax.set_xlabel("x");ax.set_ylabel("true pdf"); 
+'''
