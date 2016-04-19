@@ -1,11 +1,11 @@
 ###############################################################################
 # Implementation of kernel multi-view spectral algorithm of Song et al. (2014)
 #
-# Author: Chicheng Zhang, E.D. Gutierrez (edg@icsi.berkeley.edu)
-# Created: 24 Mar 2016
-# Last modified: 12 Apr 2016
+# Author: E.D. Gutierrez (edg@icsi.berkeley.edu)
+# Created: 24 March 2016
+# Last modified: 29 March 2016
 #
-# Example usage: see knbTest.py.  The main functions are kernHMM and kernXMM
+# Sample usage: see knbTest.py.  The main functions are kernHMM and kernXMM
 # 
 ###############################################################################
 import numpy as np
@@ -32,6 +32,9 @@ def kernHMM(X,k,kernel='gaussian',symmetric=False,var=1, xRange=None):
      symmetric: whether the model has symmetric views or not (should be False
          for HMM)
      xRange: range of X's for which to compute p(x|h). each row is a point.
+     var: variance of the kernel (for most kernels).  for beta kernel, var is a
+         list with var[0] = numObs and var[1] = desired dimensionality of 
+         output feature map.
   Otputs:
      pXbarH:  probabilitiy densities of hidden states (i.e., p(x|h)) at points
          specified by xrange. This is len(xrange) x k array.
@@ -111,7 +114,7 @@ def returnKernel(kernel, var=1):
     kern = lambda XX: np.exp(-np.power(pdist2(XX,'mahalanobis',VInv),2))
   elif kernel in ['beta']:
     dot = lambda XX: XX.dot(XX)
-    kern = lambda XX: dot(phi_beta(XX))
+    kern = lambda XX: dot(phi_beta(XX,var[0],var[1]))
   return kern
 
 # <codecell>
@@ -146,7 +149,7 @@ def crossComputeKerns(X,Y,kernel,symmetric,var=1):
     VInv = np.inv(var)
     kern = lambda XX,YY: np.exp(-np.power(cdist(XX,YY,'mahalanobis',VInv),2))
   elif kernel in ['beta','betadot']:
-    kern = lambda XX,YY: phi_beta(XX).T.dot(phi_beta(YY))
+    kern = lambda XX,YY: phi_beta(XX,var[0],var[1]).T.dot(phi_beta(YY,var[0],var[1]))
   K = kern(X,Y)   
   return K
 
@@ -243,7 +246,7 @@ def kernSpecAsymm(K,L,G,k,view=2,lambda0=1e-2):
     Sroot = np.matrix(np.diag(np.power(S,-0.5))) 
     term1 = G*beta*Sroot
     T = trilinear('I', H*term1,H.T*term1,term1)/m
-  (lambda0, M) = tentopy.eig(T,inner,outer) 
+  (M,lambda0) = tentopy.eig(T,inner,outer) 
   M = np.matrix(M[:,:k])
   lambda0 = np.array(lambda0[:k]).flatten()
   A = beta*Sroot*M*np.diag(lambda0)
@@ -307,7 +310,7 @@ def kernSpecSymm(K,L,k):
     chi_2 = term1*K[:,m+kk]
     chi_3 = term1*K[:,2*m+kk]
     T += symmetricTensor(chi_1,chi_2,chi_3)
-  (lambda0, M) = tentopy.eig(T,inner,outer)
+  (M, lambda0) = tentopy.eig(T,inner,outer)
   A = beta*np.power(S,-0.5)*M*np.diag(lambda0)
   pi = np.power(lambda0,-2).T
   return (A,pi)
