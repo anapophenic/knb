@@ -139,10 +139,13 @@ def generateData_firstFew(N, numState, T, p, initDist, l):
 
 # <codecell>
 
-def generateData_general(N, numState, T, O, initDist, l):
+def generateData_general(T, O, initDist, l):
     ### This function generates l triples, each representing methylation counts at first 3 cites of a sequence
     ### Data generated from an HMM with transition matrix T and obervation matrix O
     #   T and O are column stochastic
+    
+    N = np.shape(O)[0]
+    numState = np.shape(O)[1]
     
     # create l triples (x1, x2, x3), x1, x2, x3 \in [N].
     T = np.transpose(T)
