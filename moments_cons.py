@@ -18,6 +18,7 @@ def moments_cons(X, phi, N, n):
     s = float(l);
     
     for i in xrange(l):
+        print i
         p1 = phi(X[i,0], N, n);
         p2 = phi(X[i,1], N, n);
         p3 = phi(X[i,2], N, n);
@@ -27,6 +28,38 @@ def moments_cons(X, phi, N, n):
         P_23 += np.kron(p2, p3). reshape(n, n) / s
         P_13 += np.kron(p1, p3). reshape(n, n) / s
         P_123 += np.kron(p1, np.kron(p2, p3)). reshape(n, n, n) / s
+        
+    return P_21, P_31, P_23, P_13, P_123
+    
+    
+def moments_cons_importance_weighted(X_iw, phi, N, n):
+    
+    P_21 = np.zeros((n,n));
+    P_31 = np.zeros((n,n));    
+    P_23 = np.zeros((n,n));    
+    P_13 = np.zeros((n,n));        
+    P_123 = np.zeros((n,n,n));         
+    
+    s = sum(X_iw.values());
+    print len(X_iw)
+    
+    
+    i = 0
+    for X, importance_weight in X_iw.iteritems():
+        #if importance_weight > 1:
+        #    print X, importance_weight
+        if i % 10000 == 0:
+            print i
+        i += 1
+        p1 = phi(X[0], N, n);
+        p2 = phi(X[1], N, n);
+        p3 = phi(X[2], N, n);
+    
+        P_21 += importance_weight * np.kron(p2, p1). reshape(n, n) / s
+        P_31 += importance_weight * np.kron(p3, p1). reshape(n, n) / s
+        P_23 += importance_weight * np.kron(p2, p3). reshape(n, n) / s
+        P_13 += importance_weight * np.kron(p1, p3). reshape(n, n) / s
+        P_123 += importance_weight * np.kron(p1, np.kron(p2, p3)). reshape(n, n, n) / s
         
     return P_21, P_31, P_23, P_13, P_123
 
@@ -330,8 +363,8 @@ if __name__ == '__main__':
 
     np.random.seed(0);
     #N = 3
-    m = 3
-    n = 30;
+    m = 5
+    n = 5;
     
     '''
     N = 3
@@ -369,8 +402,8 @@ if __name__ == '__main__':
     
     
     print 'Reading Data..'
-    filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_E1_chr1_binsize100.mat'
-    N, X, a = data_import.data_prep(filename);
+    filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_E1_chrY_binsize100.mat'
+    N, X_importance_weighted, a = data_import.data_prep(filename);
     print 'N = '
     print N
     print 'a = '
@@ -387,7 +420,7 @@ if __name__ == '__main__':
     #C = gt_obs(phi, N, n, O);
 
     print 'Constructing Moments..'    
-    P_21, P_31, P_23, P_13, P_123 = moments_cons(X, phi, N, n);
+    P_21, P_31, P_23, P_13, P_123 = moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
     #P_21, P_31, P_23, P_13, P_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
     #R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
     
