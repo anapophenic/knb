@@ -3,6 +3,17 @@ import numpy as np
 from collections import Counter
 
 def data_prep(filename):
+  """
+  Main function for importing triples from raw INTACT DNA methylation data
+  Inputs:
+     filename: filename for INTACT DNA methylation data
+  Otputs:
+     N: number of maximum number of coverage
+     X_importance_weighted: a dictionary of 
+        key: triples (x_1, x_2, x_3)
+        value: total number of cooccurrence of (x_1, x_2, x_3) (importance weight) 
+        a: correction term \E[1/(n+2)] used in explicit feature map
+  """   
     mat = scipy.io.loadmat(filename)
 
     #print mat
