@@ -16,10 +16,13 @@ import sys; sys.path.append('c:/users/e4gutier/documents/')
 import tentopy
 import itertools
 
+import moments_cons  as m_c
+
 
 inner, outer = 100,100  #number of inner and outer iterations for tensor power method
 
 pdist2 = lambda X,Y: squareform(pdist(X,Y)) #compute square form of pairwise distances
+
 
 # <codecell>
 
@@ -52,7 +55,8 @@ def kernHMM(X,k,kernel='gaussian',symmetric=False,var=1, xRange=None):
 
 # <codecell>
 
-def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
+def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False, 
+            compute_T=True):
   """
   Main function for learning three-view mixture model 
   Inputs:
@@ -64,36 +68,36 @@ def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
      kernel: kernel to use for smoothing probability distributions p(x|h)
      var: variance of kernel (smoothing).
      symmetric: whether to use the symmetric version of algorithm (set to False)
+     compute_T: whether to compute discretized finite-dimensional version of 
+             transition operator (transition matrix)
   Otputs:
-     pXbarH: probabilitiy densities of hidden states
+     O_h: probabilitiy densities p(x|h); a discretized finite-dimensional 
+             version of observation operator (observation matrix)
+     T_h: probability densities p(h_2|h_1); a discretized finite-dimensional 
+             version of transition operator (transition matrix)
   """    
   (K,L,G) = computeKerns3(X,kernel,symmetric,var)
   if symmetric:
     (A,pi) = kernSpecSymm(np.hstack(K,L), np.hstack(L,K),k)
   else:
-    (A,pi) = kernSpecAsymm(K,L,G,k)
+    (A,pi) = kernSpecAsymm(K,L,G,k,view=2)
+    if compute_T:
+      (A3,_) = kernSpecAsymm(K,L,G,k,view=3)
   if queryX is None:
-    pXbarH = G*A
+    O_h = G*A
+    if compute_T:
+      TO_h = G*A3
   else: 
-    pXbarH = crossComputeKerns(queryX,np.matrix(X[:,2]).T,kernel,symmetric,var)*A
-  return pXbarH  
+  #  pXbarH = crossComputeKerns(queryX,np.matrix(X[:,2]).T,kernel,symmetric,var)*A
+    O_h = crossComputeKerns(queryX,X[:,2].T,kernel,symmetric,var)*A
+    if compute_T:
+      TO_h = crossComputeKerns(queryX,X[:,2].T,kernel,symmetric,var)*A3
+  if compute_T:
+    T_h = TO_h.dot(np.linalg.pinv(O_h))
+    return O_h, T_h
+  else:
+    return O_h  
   
-# <codecell>
-
-def phi_beta(x, N, n):
-    '''
-        Input: 
-            x: input (observation) vector
-            [0..N]: possible values x can take
-            n: dimensionality of feature map  
-        Output:
-            phi: beta-distribution encoding of phi(x)
-    '''
-    
-    p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** N-x ), 
-                       np.linspace(0.05,0.95,n).tolist()));
-    return p / sum(p);
-    
 # <codecell>
     
 def returnKernel(kernel, var=1):
@@ -113,8 +117,11 @@ def returnKernel(kernel, var=1):
     VInv = np.inv(var)
     kern = lambda XX: np.exp(-np.power(pdist2(XX,'mahalanobis',VInv),2))
   elif kernel in ['beta']:
-    dot = lambda XX: XX.dot(XX)
-    kern = lambda XX: dot(phi_beta(XX,var[0],var[1]))
+    dot = lambda XX: XX.T.dot(XX)
+    kern = lambda XX: dot(np.matrix(m_c.phi_beta(XX,var[0],var[1])))
+  elif kernel in ['beta_shifted','beta shifted']:
+    dot = lambda XX: XX.T.dot(XX)
+    kern = lambda XX: dot(np.matrix(m_c.phi_beta_shifted(XX,var[0],var[1])))      
   return kern
 
 # <codecell>
@@ -149,7 +156,11 @@ def crossComputeKerns(X,Y,kernel,symmetric,var=1):
     VInv = np.inv(var)
     kern = lambda XX,YY: np.exp(-np.power(cdist(XX,YY,'mahalanobis',VInv),2))
   elif kernel in ['beta','betadot']:
-    kern = lambda XX,YY: phi_beta(XX,var[0],var[1]).T.dot(phi_beta(YY,var[0],var[1]))
+    kern = lambda XX,YY: np.matrix(m_c.phi_beta(XX,var[0],var[1]).T.dot(
+                                   m_c.phi_beta(YY,var[0],var[1])))
+  elif kernel in ['beta_shifted','beta shifted']:
+    kern = lambda XX,YY: np.matrix(m_c.phi_beta_shifted(XX,var[0],var[1]).T.dot(
+                                   m_c.phi_beta_shifted(YY,var[0],var[1])))
   K = kern(X,Y)   
   return K
 
@@ -246,7 +257,7 @@ def kernSpecAsymm(K,L,G,k,view=2,lambda0=1e-2):
     Sroot = np.matrix(np.diag(np.power(S,-0.5))) 
     term1 = G*beta*Sroot
     T = trilinear('I', H*term1,H.T*term1,term1)/m
-  (M,lambda0) = tentopy.eig(T,inner,outer) 
+  (M,lambda0) = tentopy.eig(T,inner,outer) ; 
   M = np.matrix(M[:,:k])
   lambda0 = np.array(lambda0[:k]).flatten()
   A = beta*Sroot*M*np.diag(lambda0)
