@@ -2,11 +2,13 @@ import scipy.io
 import numpy as np
 from collections import Counter
 
-def data_prep(filename):
+def data_prep(filename,format='explicit'):
   """
   Main function for importing triples from raw INTACT DNA methylation data
   Inputs:
      filename: filename for INTACT DNA methylation data
+     format: whether to return the data formatted for explicit feature map 
+            or for kernel feature map
   Otputs:
      N: number of maximum number of coverage
      X_importance_weighted: a dictionary of 
@@ -47,12 +49,15 @@ def data_prep(filename):
     #for i in range(l):
     #    X0[i] = coverage[i]*(N+1) + methylated[i]
     
-    X_zipped = zip(X0[0:l-2], X0[1:l-1], X0[2:l])
+    if format=='explicit':
+      X_zipped = zip(X0[0:l-2], X0[1:l-1], X0[2:l])
     
-    X_importance_weighted = Counter( X_zipped )
+      X_importance_weighted = Counter( X_zipped )
     
-    return N, X_importance_weighted, a
-    
+      return N, X_importance_weighted, a
+    else:
+      X = np.hstack((X0[0:l-2],X0[1:l-1],X0[2:l]))
+      return N, X, a
     
 
 if __name__ == '__main__':
