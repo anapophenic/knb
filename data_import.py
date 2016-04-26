@@ -60,7 +60,7 @@ def data_prep(filename,format='explicit',l=None):
   
     return N, X_importance_weighted, a
   else:
-    X = np.hstack((X0[0:l-2],X0[1:l-1],X0[2:l]))
+    X = np.vstack((X0[0:l-2],X0[1:l-1],X0[2:l])).T
     return N, X, a
   
 
