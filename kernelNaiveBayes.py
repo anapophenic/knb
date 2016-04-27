@@ -11,12 +11,11 @@
 import numpy as np
 import scipy
 import scipy.sparse.linalg
+import scipy.stats as stats
 from scipy.spatial.distance import pdist,cdist,squareform
 import sys; sys.path.append('c:/users/e4gutier/documents/')
 import tentopy
 import itertools
-
-import moments_cons  as m_c
 
 
 inner, outer = 100,100  #number of inner and outer iterations for tensor power method
@@ -86,14 +85,14 @@ def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False,
   if queryX is None:
     O_h = G*A
     if compute_T:
-      TO_h = G*A3
+      OT_h = G*A3
   else: 
   #  pXbarH = crossComputeKerns(queryX,np.matrix(X[:,2]).T,kernel,symmetric,var)*A
     O_h = crossComputeKerns(queryX,X[:,2].T,kernel,symmetric,var)*A
     if compute_T:
-      TO_h = crossComputeKerns(queryX,X[:,2].T,kernel,symmetric,var)*A3
+      OT_h = crossComputeKerns(queryX,X[:,2].T,kernel,symmetric,var)*A3
   if compute_T:
-    T_h = TO_h.dot(np.linalg.pinv(O_h))
+    T_h = np.linalg.pinv(O_h).dot(OT_h)
     return O_h, T_h
   else:
     return O_h  
@@ -117,11 +116,11 @@ def returnKernel(kernel, var=1):
     VInv = np.inv(var)
     kern = lambda XX: np.exp(-np.power(pdist2(XX,'mahalanobis',VInv),2))
   elif kernel in ['beta']:
-    dot = lambda XX: XX.T.dot(XX)
-    kern = lambda XX: dot(np.matrix(m_c.phi_beta(XX,var[0],var[1])))
+    dot = lambda XX: XX.dot(XX.T)
+    kern = lambda XX: dot(np.matrix(phi_beta(XX,var[0],var[1])))
   elif kernel in ['beta_shifted','beta shifted']:
-    dot = lambda XX: XX.T.dot(XX)
-    kern = lambda XX: dot(np.matrix(m_c.phi_beta_shifted(XX,var[0],var[1])))      
+    dot = lambda XX: XX.dot(XX.T)
+    kern = lambda XX: dot(np.matrix(phi_beta_shifted(XX,var[0],var[1])))      
   return kern
 
 # <codecell>
@@ -156,11 +155,11 @@ def crossComputeKerns(X,Y,kernel,symmetric,var=1):
     VInv = np.inv(var)
     kern = lambda XX,YY: np.exp(-np.power(cdist(XX,YY,'mahalanobis',VInv),2))
   elif kernel in ['beta','betadot']:
-    kern = lambda XX,YY: np.matrix(m_c.phi_beta(XX,var[0],var[1]).T.dot(
-                                   m_c.phi_beta(YY,var[0],var[1])))
+    kern = lambda XX,YY: np.matrix(phi_beta(XX,var[0],var[1]).dot(
+                                   phi_beta(YY,var[0],var[1]).T))
   elif kernel in ['beta_shifted','beta shifted']:
-    kern = lambda XX,YY: np.matrix(m_c.phi_beta_shifted(XX,var[0],var[1]).T.dot(
-                                   m_c.phi_beta_shifted(YY,var[0],var[1])))
+    kern = lambda XX,YY: np.matrix(phi_beta_shifted(XX,var[0],var[1]).dot(
+                                   phi_beta_shifted(YY,var[0],var[1]).T))
   K = kern(X,Y)   
   return K
 
@@ -362,13 +361,13 @@ def trilinear(T,W1,W2,W3):
 # <codecell>
 
 def medianTrick(X,kernel='gaussian'):
-    """
-    Implementation of the median trick for bandwidth selection from Gretton et
-    al (2006) NIPS paper.
-    Set var = 0.5*(median(|X_i-X_j|)[:])**2,i != j (TODO: check this condition)
-    """
-    if kernel=='gaussian':
-        return 0.5*np.median(pdist(X,'sqeuclidean'))
+  """
+  Implementation of the median trick for bandwidth selection from Gretton et
+  al (2006) NIPS paper.
+  Set var = 0.5*(median(|X_i-X_j|)[:])**2,i != j (TODO: check this condition)
+  """
+  if kernel=='gaussian':
+    return 0.5*np.median(pdist(X,'sqeuclidean'))
 
 # <codecell>
 
@@ -380,3 +379,59 @@ def symmetricTensor(a,b,c):
   term2 = np.tensordot(np.tensordot(c,a,0),b,0)
   term3 = np.tensordot(np.tensordot(b,c,0),a,0)
   return term1+term2+term3
+  
+# <codecell>
+def phi_beta_shifted(x, N, n):
+  '''
+    Input: 
+        phi: feature map
+        [0..N]: possible values x can take
+        n: dimensionality of feature map  
+    Output:
+       beta-distribution encoding of phi(x)
+  '''
+  #print x
+  #print N
+  if len(np.shape(x))==0:
+    i = int(x / (N+1));
+    k = int(x) % (N+1); 
+    if k > i:
+      return np.zeros(n)
+    p = np.asarray(map(lambda t: beta_interval(t, k, i-k, n), unif_partition(n).tolist())); 
+    return p / sum(p);
+
+  else:
+    p = np.zeros((np.size(x),n))
+    for j,item in enumerate(x):
+      i = int(item / (N+1))
+      k = int(item) % (N+1)
+      if k > i:
+        pass
+      else:
+        p[j,:] = np.asarray(map(lambda t: beta_interval(t, k, i-k, n), unif_partition(n).tolist()));
+        p[j,:] = p[j,:]/sum(p[j,:]) #TODO: vectorize this
+    return p
+  #p = np.asarray(map(lambda t: (t ** k) * ( (1-t) ** (i - k) ), unif_partition(n).tolist()));
+
+
+def phi_beta(x, N, n):
+  '''
+      Input: 
+          phi: feature map
+          [0..N]: possible values x can take
+          n: dimensionality of feature map  
+      Output:
+          beta-distribution encoding of phi(x)
+  '''
+  #print x
+  #print N
+    
+  #p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** (N-x) ), unif_partition(n).tolist()));
+  p = np.asarray(map(lambda t: beta_interval(t, x, N-x, n), unif_partition(n).tolist()));
+  return p / sum(p);
+
+def beta_interval(t, k, l, n):    
+    return stats.beta.cdf(t+0.5/n, k+1, l+1) - stats.beta.cdf(t-0.5/n, k+1, l+1)
+    
+def unif_partition(n):
+    return np.linspace(1.0/(2*n), 1.0 - 1.0/(2*n), n)
