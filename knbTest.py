@@ -116,3 +116,42 @@ map0 = xRange[np.argmax(pXbarH[:,0])]
 map1 = xRange[np.argmax(pXbarH[:,1])]
 
 print 'Maximum a posteriori means:\t'+str(map0)+'\t'+str(map1)
+
+########################################################
+
+########################################################
+import kernelNaiveBayes as knb
+import data_import as d_i
+import moments_cons as m_c
+basepath = 'C:/Users/e4gutier/Downloads/mukamel/cndd/emukamel/HMM/Data/Binned/'
+
+
+
+l=5000
+N,X,a = d_i.data_prep(basepath+'allc_AM_E1_chrY_binsize100.mat','kern',l)
+kernel = 'beta_shifted'
+
+N,X_importance_weighted,a = d_i.data_prep(basepath+'allc_AM_E1_chrY_binsize100.mat','explicit',l)
+
+#noise = np.random.rand(Data.shape[0],Data.shape[1])/1e3 #jiggle the data points a little bit to improve conditioning
+m = 3; n=5 #m is number of hidden states; n is number of bins in kernel
+xRange = np.arange(0,X.max(),int(X.max()/n))
+O_h,T_h = knb.kernXMM(X,m,xRange,var=[N,n],kernel='beta_shifted')
+O_h,T_h = m_c.col_normalize(O_h),m_c.col_normalize(T_h)
+
+##
+kernel = 'beta_shifted'; var = [N,n];k=m; queryX = xRange
+(K,L,G) = knb.computeKerns3(X,kernel,False,var)
+(A,pi) = knb.kernSpecAsymm(K,L,G,k,view=2)
+(A3,_) = knb.kernSpecAsymm(K,L,G,k,view=3)
+O_h = knb.crossComputeKerns(queryX,X[:,2].T,kernel,False,var)*A
+OT_h = knb.crossComputeKerns(queryX,X[:,2].T,kernel,False,var)*A3
+T_h = np.linalg.pinv(O_h).dot(OT_h)
+##
+
+phi = m_c.phi_beta_shifted;
+P_21, P_31, P_23, P_13, P_123 = m_c.moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
+    
+C_h, T_h = m_c.estimate(P_21, P_31, P_23, P_13, P_123, m)
+
+C_h_p, T_h_p = m_c.estimate_refine(C_h, P_21, phi, N, n, m, a)
