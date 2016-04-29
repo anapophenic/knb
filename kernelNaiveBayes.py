@@ -54,8 +54,7 @@ def kernHMM(X,k,kernel='gaussian',symmetric=False,var=1, xRange=None):
 
 # <codecell>
 
-def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False, 
-            compute_T=True):
+def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
   """
   Main function for learning three-view mixture model 
   Inputs:
@@ -67,8 +66,6 @@ def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False,
      kernel: kernel to use for smoothing probability distributions p(x|h)
      var: variance of kernel (smoothing).
      symmetric: whether to use the symmetric version of algorithm (set to False)
-     compute_T: whether to compute discretized finite-dimensional version of 
-             transition operator (transition matrix)
   Otputs:
      O_h: probabilitiy densities p(x|h); a discretized finite-dimensional 
              version of observation operator (observation matrix)
@@ -82,21 +79,17 @@ def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False,
     (A,pi) = kernSpecAsymm(K,L,G,k,view=2)
     if compute_T:
       (A3,_) = kernSpecAsymm(K,L,G,k,view=3)
+  pinvA = np.linalg.pinv(A)
   if queryX is None:
     O_h = G*A
-    if compute_T:
-      OT_h = G*A3
+    T_h = pinvA*L*G*pinvA.T
   else: 
   #  pXbarH = crossComputeKerns(queryX,np.matrix(X[:,2]).T,kernel,symmetric,var)*A
-    O_h = crossComputeKerns(queryX,X[:,2].T,kernel,symmetric,var)*A
-    if compute_T:
-      OT_h = crossComputeKerns(queryX,X[:,2].T,kernel,symmetric,var)*A3
-  if compute_T:
-    T_h = np.linalg.pinv(O_h).dot(OT_h)
-    return O_h, T_h
-  else:
-    return O_h  
-  
+    KL = crossComputeKerns(queryX,X[:,2].T,kernel,symmetric,var)
+    O_h = KL*A
+    T_h = pinvA*L*KL*pinvA.T
+  return O_h, T_h
+
 # <codecell>
     
 def returnKernel(kernel, var=1):
