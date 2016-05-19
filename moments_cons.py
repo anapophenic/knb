@@ -5,6 +5,7 @@ from scipy import stats
 from scipy import special
 import tentopy
 import kernelNaiveBayes
+import matplotlib.pyplot as plt
 
 def moments_cons(X, phi, N, n):
     
@@ -145,6 +146,23 @@ def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
 
     return M_2, M_3
 
+def phi_binning(x, N, n):
+    i = int(x / (N+1));
+    k = int(x) % (N+1);
+    prob = float(i) / k;
+     
+    if k > i:
+        return np.zeros(n)
+        
+    p = np.zeros(n)
+    for j in range(n):
+        if (j <= (n-2) & prob >= float(j) / n & prob < float(j+1) / n):
+            p[j] = 1
+        if (j == (n-1) & prob >= float(j) / n & prob <= float(j+1) / n):
+            p[j] = 1
+
+    return p;
+
 def phi_beta_shifted(x, N, n):
     '''
         Input: 
@@ -243,24 +261,41 @@ def get_O(phi, N, n, C_h, a):
         Output:
             p_h: estimated methylating probability
     '''
+    p_h = get_p(phi, N, n, C_h, a);
     
     if (phi == phi_onehot):
-        p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
         O_h = generate_O_binom(m, N, p_h)
     elif (phi == phi_beta):
-        p_h = ((N+1) * np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - 1) / N
         O_h = generate_O_binom(m, N, p_h)
     elif (phi == phi_beta_shifted):            
-        p_h = (np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
+        # implicit assuming n is uniform distributed, which is wrong
         O_h = generate_O_stochastic_N(m, N, p_h)
-        
-    print 'p_h = ' 
-    print p_h   
         
     return O_h
     
-def col_normalize(M):
+    
+def get_p(phi, N, n, C_h, a):
 
+    if (phi == phi_onehot):
+        p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
+    elif (phi == phi_beta):
+        p_h = ((N+1) * np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - 1) / N
+    elif (phi == phi_beta_shifted):            
+        p_h = (np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
+        
+    return p_h  
+
+    
+def col_normalize(M):
+    # first determine the sign of the observations
+    s = np.diag(np.sign(np.sum(np.asarray(M), axis=0)))   
+    M = M.dot(s)
+
+    # second zero out those negative entries
+    M = np.array(M)
+    M = M * (M > 0)
+    
+    # then normalize all the entries
     return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
     
       
@@ -357,14 +392,19 @@ def generate_initDist(m):
     initDist = np.asarray([0.6, 0.4])
     
     return initDist
+        
+    
 
 if __name__ == '__main__':
 
 
     np.random.seed(0);
     #N = 3
-    m = 5
-    n = 5;
+    m = 3
+    #play with n,
+    #change the setting of t's, even forget about recovering p_h's
+    #try to look at least squares soln
+    n = 100
     
     '''
     N = 3
@@ -400,51 +440,63 @@ if __name__ == '__main__':
     #X = dataGenerator.generateData_general(T, O, initDist, l)
     #X = dataGenerator.generateData_firstFew(N, m, T, p, initDist, l)
     
-    
-    print 'Reading Data..'
-    filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_E1_chrY_binsize100.mat'
-    N, X_importance_weighted, a = data_import.data_prep(filename);
-    print 'N = '
-    print N
-    print 'a = '
-    print a
-    #X = X[:10000,:]
-    
-    #phi = phi_onehot;
-    #phi = phi_beta;
-    phi = phi_beta_shifted;
-    
-    if phi == phi_onehot:
-        n = N + 1
+    for s in range(1,6):
+        print 'Reading Data..'
+        filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_E1_chrY_binsize100.mat'
+        N, X_importance_weighted, a = data_import.data_prep(filename, 'explicit',s=2);
+        print 'N = '
+        print N
+        print 'a = '
+        print a
+        #X = X[:10000,:]
+        
+        #phi = phi_onehot;
+        #phi = phi_beta;
+        phi = phi_beta_shifted;
+        
+        if phi == phi_onehot:
+            n = N + 1
 
-    #C = gt_obs(phi, N, n, O);
+        #C = gt_obs(phi, N, n, O);
 
-    print 'Constructing Moments..'    
-    P_21, P_31, P_23, P_13, P_123 = moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
-    #P_21, P_31, P_23, P_13, P_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
-    #R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
-    
-    #print 'C = '
-    #print C
-    
-    #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
-    
-    print 'Estimating..'
-    C_h, T_h = estimate(P_21, P_31, P_23, P_13, P_123, m)
-    #C_h, T_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
-    print 'C_h = '
-    print C_h
-    
-    print 'T_h = '
-    print T_h
-    
-    print 'Refining using Binomial Knowledge'
+        print 'Constructing Moments..'    
+        P_21, P_31, P_23, P_13, P_123 = moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
+        #P_21, P_31, P_23, P_13, P_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
+        #R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
+        
+        #print 'C = '
+        #print C
+        
+        #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
+        #save the moments in a file
+        
+        for m in range(2,10,1):
+            print 'Estimating..'
+            C_h, T_h = estimate(P_21, P_31, P_23, P_13, P_123, m)
+            #C_h, T_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
+            print 'C_h = '
+            print C_h
+            
+            print 'T_h = '
+            print T_h
+            
+            p_h = get_p(phi, N, n, C_h, a)
+            print 'p_h = ' 
+            print p_h   
+            
+            fig = plt.figure(1)
+            plt.plot(unif_partition(n), C_h)
+            fig.savefig('s = ' + str(s) + '_m = ' + str(m) + '.pdf')   # save the figure to file
+            plt.close(fig)
+        
+        
+        #print 'Refining using Binomial Knowledge'
 
-    C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
-    print 'C_h_p = '
-    print C_h_p
-    print 'T_h_p = '
-    print T_h_p
-    #print get_p(phi, N, n, O_h)
-   
+        #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
+        #print 'C_h_p = '
+        #print C_h_p
+        #print 'T_h_p = '
+        #print T_h_p
+        #print get_p(phi, N, n, O_h)
+       
     

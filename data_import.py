@@ -2,7 +2,20 @@ import scipy.io
 import numpy as np
 from collections import Counter
 
-def data_prep(filename,format='explicit',l=None):
+def subsample(coverage, methylated, s):
+
+  l = np.shape(coverage)[0]
+
+  coverage_zipped = zip(*[coverage[i:(l-s+i)] for i in range(s)])
+  methylated_zipped = zip(*[methylated[i:(l-s+i)] for i in range(s)])
+  coverage_merged = map(sum, coverage_zipped)
+  methylated_merged = map(sum, methylated_zipped)
+  coverage_subs = coverage_merged[0:l-s+i:s]
+  methylated_subs = methylated_merged[0:l-s+i:s]
+    
+  return coverage, methylated
+
+def data_prep(filename,format='explicit',l=None,s=1):
   """
   Main function for importing triples from raw INTACT DNA methylation data
   Inputs:
@@ -10,13 +23,14 @@ def data_prep(filename,format='explicit',l=None):
    format: whether to return the data formatted for explicit feature map 
       or for kernel feature map
    l: maximum length of data to sample; if None, the whole set is sampled
+   s: number of methylations / coverages to merge
   Otputs:
    N: number of maximum number of coverage
    X_importance_weighted: a dictionary of 
     key: triples (x_1, x_2, x_3)
     value: total number of cooccurrence of (x_1, x_2, x_3) (importance weight) 
     a: correction term \E[1/(n+2)] used in explicit feature map
-  """   
+  """
   mat = scipy.io.loadmat(filename)
 
   #print mat
@@ -26,24 +40,30 @@ def data_prep(filename,format='explicit',l=None):
 
   coverage = mat['h']
   methylated = mat['mc']
+  
   if l is not None:
     coverage = coverage[:l]
     methylated = methylated[:l]
-  N = np.amax(coverage)
-  
-  print np.shape(coverage)
+
+  #print np.shape(coverage)
   
   # merging all the contexts with cytosine(C) at this point:
   coverage = np.sum(coverage, axis=1);
   methylated = np.sum(methylated, axis=1);
+
+  # merge every s observations  
+  (coverage, methylated) = subsample(coverage, methylated, s);
   
+  N = np.amax(coverage)
   
+  print 'N = '
+  print N
   
   # preparing data
   l = np.shape(coverage)[0]
   print 'l = '
   print l
-  
+    
   X0 = coverage * (N+1) + methylated
   
   # compute E[1/(n+2)]
