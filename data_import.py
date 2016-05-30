@@ -5,7 +5,8 @@ from collections import Counter
 def subsample(coverage, methylated, s):
 
   l = np.shape(coverage)[0]
-
+  
+  # zipping this way group every s elts together
   coverage_zipped = zip(*[coverage[i:(l-s+i)] for i in range(s)])
   methylated_zipped = zip(*[methylated[i:(l-s+i)] for i in range(s)])
   coverage_merged = map(sum, coverage_zipped)
@@ -15,7 +16,7 @@ def subsample(coverage, methylated, s):
     
   return coverage, methylated
 
-def data_prep(filename,format='explicit',l=None,s=1):
+def data_prep(filename,format='explicit', l=None, s=1):
   """
   Main function for importing triples from raw INTACT DNA methylation data
   Inputs:
@@ -41,6 +42,9 @@ def data_prep(filename,format='explicit',l=None,s=1):
   coverage = mat['h']
   methylated = mat['mc']
   
+  print 'length of the original sequence = '
+  print len(coverage)
+  
   if l is not None:
     coverage = coverage[:l]
     methylated = methylated[:l]
@@ -61,7 +65,7 @@ def data_prep(filename,format='explicit',l=None,s=1):
   
   # preparing data
   l = np.shape(coverage)[0]
-  print 'l = '
+  print 'final length of the sequence = '
   print l
     
   X0 = coverage * (N+1) + methylated

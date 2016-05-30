@@ -1,11 +1,8 @@
-import dataGenerator
-import data_import
 import numpy as np
 from scipy import stats
 from scipy import special
 import tentopy
 import kernelNaiveBayes
-import matplotlib.pyplot as plt
 
 def moments_cons(X, phi, N, n):
     
@@ -395,108 +392,5 @@ def generate_initDist(m):
         
     
 
-if __name__ == '__main__':
 
-
-    np.random.seed(0);
-    #N = 3
-    m = 3
-    #play with n,
-    #change the setting of t's, even forget about recovering p_h's
-    #try to look at least squares soln
-    n = 100
-    
-    '''
-    N = 3
-    #l = 20000
-    min_sigma_t = 0.7
-    #min_sigma_o = 0.5
-    #n = 3;
-    
-    
-    print 'Generating O and T..'
-    #O = generate_O(m, N, min_sigma_o);
-    p = generate_p(m);
-    print 'p = '
-    print p       
-    
-    #O = generate_O_binom(m, N, p);
-    O = generate_O_stochastic_N(m, N, p);
-    print 'O = '
-    print O     
-    
-    T = generate_T(m, min_sigma_t);
-    print 'T = '
-    print T
-    
-    initDist = generate_initDist(m);
-    print 'initDist = '
-    print initDist
-    
-    a = get_a(N);
-    '''
-    
-    #print 'Generating Data..'
-    #X = dataGenerator.generateData_general(T, O, initDist, l)
-    #X = dataGenerator.generateData_firstFew(N, m, T, p, initDist, l)
-    
-    for s in range(1,6):
-        print 'Reading Data..'
-        filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_E1_chrY_binsize100.mat'
-        N, X_importance_weighted, a = data_import.data_prep(filename, 'explicit',s=2);
-        print 'N = '
-        print N
-        print 'a = '
-        print a
-        #X = X[:10000,:]
-        
-        #phi = phi_onehot;
-        #phi = phi_beta;
-        phi = phi_beta_shifted;
-        
-        if phi == phi_onehot:
-            n = N + 1
-
-        #C = gt_obs(phi, N, n, O);
-
-        print 'Constructing Moments..'    
-        P_21, P_31, P_23, P_13, P_123 = moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
-        #P_21, P_31, P_23, P_13, P_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
-        #R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = moments_gt(O, phi, N, n, T, initDist)
-        
-        #print 'C = '
-        #print C
-        
-        #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
-        #save the moments in a file
-        
-        for m in range(2,10,1):
-            print 'Estimating..'
-            C_h, T_h = estimate(P_21, P_31, P_23, P_13, P_123, m)
-            #C_h, T_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
-            print 'C_h = '
-            print C_h
-            
-            print 'T_h = '
-            print T_h
-            
-            p_h = get_p(phi, N, n, C_h, a)
-            print 'p_h = ' 
-            print p_h   
-            
-            fig = plt.figure(1)
-            plt.plot(unif_partition(n), C_h)
-            fig.savefig('s = ' + str(s) + '_m = ' + str(m) + '.pdf')   # save the figure to file
-            plt.close(fig)
-        
-        
-        #print 'Refining using Binomial Knowledge'
-
-        #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
-        #print 'C_h_p = '
-        #print C_h_p
-        #print 'T_h_p = '
-        #print T_h_p
-        #print get_p(phi, N, n, O_h)
-       
     
