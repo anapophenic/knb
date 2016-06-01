@@ -4,6 +4,25 @@ from scipy import special
 import tentopy
 import kernelNaiveBayes
 
+def cache_results(a_func):
+    '''This decorator funcion binds a map between the tuple of arguments 
+       and results computed by aFunc for those arguments'''
+    def cached_func(*args):
+        if not hasattr(a_func, '_cache'):
+            a_func._cache = {}
+        if args in a_func._cache:
+            return a_func._cache[args]
+        new_val = a_func(*args)
+        a_func._cache[args] = new_val
+        return new_val
+    return cached_func
+    
+def phi_beta_shifted_cached(*args):
+    return cache_results(phi_beta_shifted)(*args)
+    
+def phi_binning_cached(*args):
+    return cache_results(phi_binning)(*args)
+
 def moments_cons(X, phi, N, n):
     
     P_21 = np.zeros((n,n));
@@ -146,18 +165,21 @@ def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
 def phi_binning(x, N, n):
     i = int(x / (N+1));
     k = int(x) % (N+1);
-    prob = float(i) / k;
-     
-    if k > i:
+    
+    if k > i or k == 0:
         return np.zeros(n)
+        
+    prob = float(k) / i;
+    
+    #print prob
         
     p = np.zeros(n)
     for j in range(n):
-        if (j <= (n-2) & prob >= float(j) / n & prob < float(j+1) / n):
+        if (j <= (n-2) and prob >= float(j) / n and prob < float(j+1) / n):
             p[j] = 1
-        if (j == (n-1) & prob >= float(j) / n & prob <= float(j+1) / n):
+        if (j == (n-1) and prob >= float(j) / n and prob <= float(j+1) / n):
             p[j] = 1
-
+    
     return p;
 
 def phi_beta_shifted(x, N, n):
@@ -184,6 +206,7 @@ def phi_beta_shifted(x, N, n):
 
 def phi_beta(x, N, n):
     '''
+        Beta mapping that works for a fixed coverage value
         Input: 
             phi: feature map
             [0..N]: possible values x can take
@@ -226,7 +249,7 @@ def gt_obs(phi, N, n, O):
         Trans = np.zeros((n, N+1));
         for x in xrange(N+1):
             Trans[:,x] = phi(x, N, n).T
-    elif phi == phi_beta_shifted:
+    elif phi == phi_beta_shifted or phi == phi_binning or phi == phi_beta_shifted_cached or phi == phi_binning_cached:
         Trans = np.zeros((n, (N+1)*(N+1)));
         for x in xrange((N+1)*(N+1)):
             Trans[:,x] = phi(x, N, n).T
@@ -260,12 +283,10 @@ def get_O(phi, N, n, C_h, a):
     '''
     p_h = get_p(phi, N, n, C_h, a);
     
-    if (phi == phi_onehot):
+    if (phi == phi_onehot or phi == phi_beta):
         O_h = generate_O_binom(m, N, p_h)
-    elif (phi == phi_beta):
-        O_h = generate_O_binom(m, N, p_h)
-    elif (phi == phi_beta_shifted):            
-        # implicit assuming n is uniform distributed, which is wrong
+    elif (phi == phi_beta_shifted or phi == phi_binning):            
+        # implicit assuming the coverage is uniform distributed, which may be wrong
         O_h = generate_O_stochastic_N(m, N, p_h)
         
     return O_h
@@ -277,8 +298,10 @@ def get_p(phi, N, n, C_h, a):
         p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
     elif (phi == phi_beta):
         p_h = ((N+1) * np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - 1) / N
-    elif (phi == phi_beta_shifted):            
+    elif (phi == phi_beta_shifted or phi == phi_beta_shifted_cached):            
         p_h = (np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
+    elif (phi == phi_binning or phi == phi_binning_cached):
+        p_h = np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0)
         
     return p_h  
 
@@ -290,7 +313,7 @@ def col_normalize(M):
 
     # second zero out those negative entries
     M = np.array(M)
-    M = M * (M > 0)
+    #M = M * (M > 0)
     
     # then normalize all the entries
     return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
@@ -327,15 +350,6 @@ def estimate_refine(C_h, P_21, phi, N, n, m, a):
     T_h_p = col_normalize(T_h_p)
     
     return C_h_p, T_h_p    
-
-
-def generate_p(m):
-    #p = np.asarray([0,0.5,1])
-    p = np.asarray([0.3,0.7])
-    #print p
-    
-    return p
-    
     
 def generate_O_binom(m, N, p):
     O = np.zeros((N+1, m));
@@ -374,21 +388,7 @@ def generate_O(m, N, min_sigma_o):
     #O = np.asarray([[0.5, 0], [0, 0.5], [0.5, 0.5]])
     return O
     
-    
-def generate_T(m, min_sigma_t):
-    #T = dataGenerator.makeTransitionMatrix(m, min_sigma_t)
-    #T = np.asarray([[0.9, 0.05, 0.05], [0.05, 0.9, 0.05], [0.05, 0.05, 0.9]]);
-    #T = np.eye(3);
-    T = np.asarray([[0.8, 0.2], [0.2, 0.8]])
-    
-    return T
-    
-def generate_initDist(m):
-    #initDist = dataGenerator.makeDistribution(m)
-    #initDist = np.asarray([0.33,0.33,0.34])
-    initDist = np.asarray([0.6, 0.4])
-    
-    return initDist
+
         
     
 

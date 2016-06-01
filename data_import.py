@@ -2,7 +2,7 @@ import scipy.io
 import numpy as np
 from collections import Counter
 
-def subsample(coverage, methylated, s):
+def group(coverage, methylated, s):
 
   l = np.shape(coverage)[0]
   
@@ -15,6 +15,16 @@ def subsample(coverage, methylated, s):
   methylated_subs = methylated_merged[0:l-s+i:s]
     
   return coverage, methylated
+
+def prefix(X_zipped, l):
+
+    # preparing data
+    l = np.shape(X_zipped)[0]
+    print 'final length of the sequence = '
+    print l
+
+    return Counter(X_zipped[:l]) 
+
 
 def data_prep(filename,format='explicit', l=None, s=1):
   """
@@ -56,18 +66,16 @@ def data_prep(filename,format='explicit', l=None, s=1):
   methylated = np.sum(methylated, axis=1);
 
   # merge every s observations  
-  (coverage, methylated) = subsample(coverage, methylated, s);
+  (coverage, methylated) = group(coverage, methylated, s);
+  
+  print 'length of the grouped sequence = '
+  print len(coverage)
   
   N = np.amax(coverage)
   
   print 'N = '
   print N
-  
-  # preparing data
-  l = np.shape(coverage)[0]
-  print 'final length of the sequence = '
-  print l
-    
+      
   X0 = coverage * (N+1) + methylated
   
   # compute E[1/(n+2)]
@@ -79,10 +87,7 @@ def data_prep(filename,format='explicit', l=None, s=1):
   
   if format=='explicit':
     X_zipped = zip(X0[0:l-2], X0[1:l-1], X0[2:l])
-  
-    X_importance_weighted = Counter( X_zipped )
-  
-    return N, X_importance_weighted, a
+    return N, X_zipped, a
   else:
     X = np.vstack((X0[0:l-2],X0[1:l-1],X0[2:l])).T
     return N, X, a

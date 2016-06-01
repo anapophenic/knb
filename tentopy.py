@@ -45,7 +45,9 @@ def whiten(M2, M3):
   W: the pseudo-whitening matrix
   \tilde{M3}: M3(W, W, W)
   """
+  
   evals, evecs = np.linalg.eig(M2)
+  
   wp = np.diag([1 / math.sqrt(max(abs(w), 10e-12)) for w in evals])
   W = np.dot(evecs, wp)
 

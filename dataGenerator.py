@@ -6,6 +6,28 @@
 import numpy as np
 import scipy
 
+def generate_p(m):
+    #p = np.asarray([0,0.5,1])
+    p = np.asarray([0.3,0.7])
+    #print p
+    
+    return p
+    
+def generate_T(m, min_sigma_t):
+    #T = dataGenerator.makeTransitionMatrix(m, min_sigma_t)
+    #T = np.asarray([[0.9, 0.05, 0.05], [0.05, 0.9, 0.05], [0.05, 0.05, 0.9]]);
+    #T = np.eye(3);
+    T = np.asarray([[0.8, 0.2], [0.2, 0.8]])
+    
+    return T
+    
+def generate_initDist(m):
+    #initDist = dataGenerator.makeDistribution(m)
+    #initDist = np.asarray([0.33,0.33,0.34])
+    initDist = np.asarray([0.6, 0.4])
+    
+    return initDist
+
 # <codecell>
 
 def makeTransitionMatrix(numState, minSigma):
