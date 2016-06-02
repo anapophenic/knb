@@ -97,10 +97,14 @@ def synthetic_expt(phi):
     #O = generate_O(m, N, min_sigma_o);
     p = dg.generate_p(m);
     print 'p = '
-    print p       
+    print p
+    
+    p_N = dg.generate_p_N(N);
+    print 'p_N = '
+    print p_N
     
     #O = generate_O_binom(m, N, p);
-    O = mc.generate_O_stochastic_N(m, N, p);
+    O = mc.generate_O_stochastic_N(m, p_N, p);
     print 'O = '
     print O     
     
@@ -171,9 +175,12 @@ if __name__ == '__main__':
     
     # Todos May 30:
     # Finish up Binnning Feature Map DONE
-    # Find some memory-efficient way to perform calculation (as opposed to calling beta integral each time)
+    # Find some memory-efficient way to perform calculation (as opposed to calling beta integral each time) DONE
     # Figure out some ways to speed up tensor matrix multiplication
     # 
+    
+    # Todos June 2:
+    # Compute the marginal of coverage, then use generate_O_stochastic_N in the refined recoverage.
     
     #phi = phi_onehot;
     #phi = phi_beta;

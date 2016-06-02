@@ -305,8 +305,10 @@ def get_p(phi, N, n, C_h, a):
         
     return p_h  
 
-    
 def col_normalize(M):
+    return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
+    
+def col_normalize_post(M):
     # first determine the sign of the observations
     s = np.diag(np.sign(np.sum(np.asarray(M), axis=0)))   
     M = M.dot(s)
@@ -316,7 +318,7 @@ def col_normalize(M):
     #M = M * (M > 0)
     
     # then normalize all the entries
-    return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
+    return col_normalize(M);
     
       
 def check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123):
@@ -335,10 +337,10 @@ def estimate(P_21, P_31, P_23, P_13, P_123, m):
     Lambda, U_T_O = tentopy.reconstruct(W, X_3);
     
     O_h = np.dot(U, U_T_O.T) 
-    O_h = col_normalize(O_h)
+    O_h = col_normalize_post(O_h)
     
     T_h = np.linalg.pinv(O_h).dot(P_21.dot(np.linalg.pinv(O_h.T)))
-    T_h = col_normalize(T_h)
+    T_h = col_normalize_post(T_h)
     
     return O_h, T_h
     
@@ -347,7 +349,7 @@ def estimate_refine(C_h, P_21, phi, N, n, m, a):
     O_h = get_O(phi, N, n, C_h, a)
     C_h_p = gt_obs(phi, N, n, O_h)
     T_h_p = np.linalg.pinv(C_h_p).dot(P_21.dot(np.linalg.pinv(C_h_p.T)))
-    T_h_p = col_normalize(T_h_p)
+    T_h_p = col_normalize_post(T_h_p)
     
     return C_h_p, T_h_p    
     
@@ -362,7 +364,7 @@ def generate_O_binom(m, N, p):
     return O
     
     
-def generate_O_stochastic_N(m, N, p):
+def generate_O_stochastic_N(m, p_N, p):
     O = np.zeros(((N+1)*(N+1), m))
     
     # n = i possibly take value 0,...,N
@@ -374,7 +376,7 @@ def generate_O_stochastic_N(m, N, p):
                 #v = special.binom(i, k) * (p[j] ** k) * ((1-p[j]) ** (i-k)) / (N+1)
                 #if np.isnan(v):
                 #    print i,k,j,p[j]
-                O[(N+1)*i + k, j] = stats.binom.pmf(k, i, p[j]) / (N+1)
+                O[(N+1)*i + k, j] = stats.binom.pmf(k, i, p[j]) * p_N[i]
                 
                 
     return O
