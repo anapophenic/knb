@@ -5,7 +5,7 @@
 
 import numpy as np
 import scipy
-import moment_cons as mc
+import moments_cons as mc
 
 def generate_p(m):
     #p = np.asarray([0,0.5,1])

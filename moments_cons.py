@@ -365,6 +365,7 @@ def generate_O_binom(m, N, p):
     
     
 def generate_O_stochastic_N(m, p_N, p):
+    N = np.shape(p_N)[0] - 1
     O = np.zeros(((N+1)*(N+1), m))
     
     # n = i possibly take value 0,...,N

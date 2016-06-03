@@ -82,7 +82,7 @@ def real_expt(phi):
                 #print get_p(phi, N, n, O_h)
                 
                 
-def synthetic_expt(phi):
+def synthetic_expt(phi, m):
     
     n = 20
     N = 30
@@ -90,7 +90,7 @@ def synthetic_expt(phi):
     min_sigma_t = 0.7
     #min_sigma_o = 0.5
     #n = 3;
-    m = 2;
+    #m = 3;
     
     
     print 'Generating O and T..'
@@ -147,7 +147,7 @@ def synthetic_expt(phi):
         
         fig = plt.figure(1)
         plt.plot(mc.unif_partition(n), C_h)
-        fig.savefig( phi_name(phi) + '_l = ' + str(l) + '_m_hat = ' + str(m_hat) + '_n = ' + str(n) + '.pdf')   # save the figure to file
+        fig.savefig( 'phi = ' + phi_name(phi) + '_m = ' + str(m) +  '_l = ' + str(l) + '_m_hat = ' + str(m_hat) + '_n = ' + str(n) + '.pdf')   # save the figure to file
         plt.close(fig)
 
 
@@ -184,13 +184,14 @@ if __name__ == '__main__':
     
     #phi = phi_onehot;
     #phi = phi_beta;
-    #phi = mc.phi_beta_shifted_cached;
-    phi = mc.phi_binning_cached;
+    phi = mc.phi_beta_shifted_cached;
+    #phi = mc.phi_binning_cached;
     
     #if phi == mc.phi_onehot:
     #    n = N + 1
     
-    
-    synthetic_expt(phi)
+    for phi in [mc.phi_beta_shifted_cached, mc.phi_binning_cached]:
+        for m in range(2,10,1): 
+            synthetic_expt(phi, m)
     #real_expt()
                
