@@ -202,23 +202,44 @@ if __name__ == '__main__':
     #    for m in range(2,10,1): 
     #        synthetic_expt(phi, m)
     
-    n = 30
     
-    #segments = range(1,6)
-    segments = [1]
-    
-    lengths = [3200]
-
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
     #chrs.append('Y')
-    chrs = ['1']
-    
+    chrs = ['1'] 
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
     cells = ['E1']
+    n = 30
     
-    phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
+    
+    '''
+    Expt 1: Compare Binning Feature vs. Beta Feature
+    
+    '''
     path_name = 'vary_phi'
-    
+    segments = [1]
+    lengths = [320000]
+    phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     real_expt(phis, chrs, cells, segments, lengths, n, path_name)
+    
+    '''
+    Expt 2: Vary Sample Size
+    
+    '''
+    path_name = 'vary_l'
+    segments = [1]
+    lengths = [10000,20000, 40000, 80000, 160000, 320000]
+    phis = [mc.phi_beta_shifted_cached]
+    real_expt(phis, chrs, cells, segments, lengths, n, path_name)
+    '''
+    Expt 2: Vary the number of Segments
+    
+    '''
+    path_name = 'vary_s'
+    segments = range(1,10)
+    lengths = [320000]
+    phis = [mc.phi_beta_shifted_cached]
+    real_expt(phis, chrs, cells, segments, lengths, n, path_name)    
+    
+    
                
