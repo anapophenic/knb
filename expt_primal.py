@@ -3,15 +3,17 @@ import numpy as np
 import data_import as di
 import matplotlib.pyplot as plt
 import dataGenerator as dg
+import os
 
-def real_expt(phi):
-    n = 20
+def real_expt(phis, chrs, cells, segments, lengths, n, path_name):
 
-    chrs = [str(a) for a in range(1,20,1)]
-    chrs.append('X')
-    chrs.append('Y')
     
-    cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
+    # re-run all expts with E2 (all configs)
+    # merge the same cell types to get a big dataset (me1 + me2 / cov1 + cov2)
+    try:
+        os.stat(path_name)
+    except:
+        os.mkdir(path_name)
     
     for ch in chrs:
         print 'ch = '
@@ -19,7 +21,7 @@ def real_expt(phi):
         for ce in cells:
             print 'ce = '
             print ce
-            for s in range(1,6):
+            for s in segments:
                 print 's = '
                 print s
                 print 'Reading Data..'
@@ -27,7 +29,7 @@ def real_expt(phi):
                 N, X_zipped, a = di.data_prep(filename,'explicit', None, s);
                 
                 #for l in [10000, 20000, 40000, 80000, 160000, 320000]:
-                for l in [50000]:
+                for l in lengths:
                     print 'l = '
                     print l
                     print 'N = '
@@ -36,50 +38,56 @@ def real_expt(phi):
                     print a
                     
                     X_importance_weighted = di.prefix(X_zipped, l)
+                    print l
                     
                     #X = X[:10000,:]
+                    
+                    for phi in phis:
+                        print 'phi = '
+                        print phi_name(phi)
 
+                        print 'Constructing Moments..'    
+                        P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
+                        
+                        #print 'C = '
+                        #print C
+                        
+                        #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
+                        #save the moments in a file
+                        
+                        print 'Estimating..'
+                        
+                        for m in range(2,10,1):
+                            print 'm = '
+                            print m
+                            C_h, T_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
+                            #C_h, T_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
+                            print 'C_h = '
+                            print C_h
+                            
+                            print 'T_h = '
+                            print T_h
+                            
+                            p_h = mc.get_p(phi, N, n, C_h, a)
+                            print 'p_h = ' 
+                            print p_h   
+                            
+                            fig = plt.figure(1)
+                            plt.plot(mc.unif_partition(n), C_h)
+                            
+                            fig.savefig(path_name + '/' + 'cell = ' + ce + '_chr = ' + ch + '_l = ' + str(l) + '_s = ' + str(s) + '_m = ' + str(m) + '_n = ' + str(n) + '_phi = ' + phi_name(phi) + '.pdf')                     
+                            # save the figure to file
+                            plt.close(fig)
+                    
+                    
+                            #print 'Refining using Binomial Knowledge'
 
-                    print 'Constructing Moments..'    
-                    P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
-                    
-                    #print 'C = '
-                    #print C
-                    
-                    #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
-                    #save the moments in a file
-                    
-                    print 'Estimating..'
-                    
-                    for m in range(2,10,1):
-                        print 'm = '
-                        print m
-                        C_h, T_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
-                        #C_h, T_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
-                        print 'C_h = '
-                        print C_h
-                        
-                        print 'T_h = '
-                        print T_h
-                        
-                        p_h = mc.get_p(phi, N, n, C_h, a)
-                        print 'p_h = ' 
-                        print p_h   
-                        
-                        fig = plt.figure(1)
-                        plt.plot(mc.unif_partition(n), C_h)
-                        fig.savefig('cell = ' + ce + '_chr = ' + ch + '_l = ' + str(l) + '_s = ' + str(s) + '_m = ' + str(m) + '_n = ' + str(n) + '.pdf')   # save the figure to file
-                        plt.close(fig)
-                
-                
-                #print 'Refining using Binomial Knowledge'
-
-                #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
-                #print 'C_h_p = '
-                #print C_h_p
-                #print 'T_h_p = '
-                #print T_h_p
-                #print get_p(phi, N, n, O_h)
+                            #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
+                            #print 'C_h_p = '
+                            #print C_h_p
+                            #print 'T_h_p = '
+                            #print T_h_p
+                            #print get_p(phi, N, n, O_h)
                 
                 
 def synthetic_expt(phi, m):
@@ -184,14 +192,33 @@ if __name__ == '__main__':
     
     #phi = phi_onehot;
     #phi = phi_beta;
-    phi = mc.phi_beta_shifted_cached;
+    #phi = mc.phi_beta_shifted_cached;
     #phi = mc.phi_binning_cached;
     
     #if phi == mc.phi_onehot:
     #    n = N + 1
     
-    for phi in [mc.phi_beta_shifted_cached, mc.phi_binning_cached]:
-        for m in range(2,10,1): 
-            synthetic_expt(phi, m)
-    #real_expt()
+    #for phi in [mc.phi_beta_shifted_cached, mc.phi_binning_cached]:
+    #    for m in range(2,10,1): 
+    #        synthetic_expt(phi, m)
+    
+    n = 30
+    
+    #segments = range(1,6)
+    segments = [1]
+    
+    lengths = [3200]
+
+    #chrs = [str(a) for a in range(1,20,1)]
+    #chrs.append('X')
+    #chrs.append('Y')
+    chrs = ['1']
+    
+    #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
+    cells = ['E1']
+    
+    phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
+    path_name = 'vary_phi'
+    
+    real_expt(phis, chrs, cells, segments, lengths, n, path_name)
                

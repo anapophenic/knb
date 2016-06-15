@@ -19,9 +19,7 @@ def group(coverage, methylated, s):
 def prefix(X_zipped, l):
 
     # preparing data
-    l = np.shape(X_zipped)[0]
-    print 'final length of the sequence = '
-    print l
+    #l = np.shape(X_zipped)[0]
 
     return Counter(X_zipped[:l]) 
 
@@ -55,9 +53,11 @@ def data_prep(filename,format='explicit', l=None, s=1):
   print 'length of the original sequence = '
   print len(coverage)
   
-  if l is not None:
-    coverage = coverage[:l]
-    methylated = methylated[:l]
+  if l is None:
+    l = len(coverage)
+  
+  coverage = coverage[:l]
+  methylated = methylated[:l]
 
   #print np.shape(coverage)
   
@@ -75,7 +75,7 @@ def data_prep(filename,format='explicit', l=None, s=1):
   
   print 'N = '
   print N
-      
+
   X0 = coverage * (N+1) + methylated
   
   # compute E[1/(n+2)]
