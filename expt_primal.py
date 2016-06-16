@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import dataGenerator as dg
 import os
 
-def real_expt(phis, chrs, cells, segments, lengths, n, path_name):
+def real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name):
 
     try:
         os.stat(path_name)
@@ -54,7 +54,7 @@ def real_expt(phis, chrs, cells, segments, lengths, n, path_name):
                         
                         print 'Estimating..'
                         
-                        for m in range(2,10,1):
+                        for m in ms:
                             print 'm = '
                             print m
                             C_h, T_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
@@ -70,13 +70,16 @@ def real_expt(phis, chrs, cells, segments, lengths, n, path_name):
                             print p_h   
                             
                             fig = plt.figure(1)
-                            plt.plot(mc.unif_partition(n), C_h)
+                            ax = fig.add_subplot(1,1,1)
+                            ax.set_title(r'Expected Feature Map given Hidden States')
+                            ax.set_xlabel(r't')
+                            ax.set_ylabel(r'E[\phi(x,t)|h]')
+                            
+                            plt.plot(mc.unif_partition(n), C_h, linewidth=3)
                             
                             fig.savefig(path_name + '/' + 'cell = ' + ce + '_chr = ' + ch + '_l = ' + str(l) + '_s = ' + str(s) + '_m = ' + str(m) + '_n = ' + str(n) + '_phi = ' + phi_name(phi) + '.pdf')                     
                             # save the figure to file
                             plt.close(fig)
-                    
-                    
                             #print 'Refining using Binomial Knowledge'
 
                             #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
@@ -209,8 +212,9 @@ if __name__ == '__main__':
     #chrs.append('Y')
     chrs = ['1'] 
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
-    cells = ['E1', 'E2', 'E'] 
-    n = 100
+    cells = ['E2', 'E1', 'E'] 
+    n = 30
+    ms = range(1, 6)
     
     
     '''
@@ -221,7 +225,7 @@ if __name__ == '__main__':
     segments = [1]
     lengths = [320000]
     phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
-    real_expt(phis, chrs, cells, segments, lengths, n, path_name)
+    real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)
     
     '''
     Expt 2: Vary Sample Size
@@ -231,16 +235,16 @@ if __name__ == '__main__':
     segments = [1]
     lengths = [10000,20000, 40000, 80000, 160000, 320000]
     phis = [mc.phi_beta_shifted_cached]
-    real_expt(phis, chrs, cells, segments, lengths, n, path_name)
+    real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)
     '''
     Expt 2: Vary the number of Segments
     
     '''
     path_name = 'vary_s'
-    segments = range(1,10)
+    segments = range(1,6)
     lengths = [320000]
     phis = [mc.phi_beta_shifted_cached]
-    real_expt(phis, chrs, cells, segments, lengths, n, path_name)    
+    real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)    
     
     
                
