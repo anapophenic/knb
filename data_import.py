@@ -20,7 +20,6 @@ def prefix(X_zipped, l):
 
     # preparing data
     #l = np.shape(X_zipped)[0]
-
     return Counter(X_zipped[:l]) 
 
 

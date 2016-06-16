@@ -7,9 +7,6 @@ import os
 
 def real_expt(phis, chrs, cells, segments, lengths, n, path_name):
 
-    
-    # re-run all expts with E2 (all configs)
-    # merge the same cell types to get a big dataset (me1 + me2 / cov1 + cov2)
     try:
         os.stat(path_name)
     except:
@@ -190,6 +187,10 @@ if __name__ == '__main__':
     # Todos June 2:
     # Compute the marginal of coverage, then use generate_O_stochastic_N in the refined recoverage.
     
+    # Todos June 14:
+    # re-run all expts with E2 (all configs)
+    # merge the same cell types to get a big dataset (me1 + me2 / cov1 + cov2)
+    
     #phi = phi_onehot;
     #phi = phi_beta;
     #phi = mc.phi_beta_shifted_cached;
@@ -208,8 +209,8 @@ if __name__ == '__main__':
     #chrs.append('Y')
     chrs = ['1'] 
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
-    cells = ['E1']
-    n = 30
+    cells = ['E1', 'E2']
+    n = 100
     
     
     '''
