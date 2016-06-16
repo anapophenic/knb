@@ -209,7 +209,7 @@ if __name__ == '__main__':
     #chrs.append('Y')
     chrs = ['1'] 
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
-    cells = ['E1', 'E2']
+    cells = ['E1', 'E2', 'E'] 
     n = 100
     
     
