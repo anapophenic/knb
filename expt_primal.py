@@ -72,8 +72,8 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name):
                             fig = plt.figure(1)
                             ax = fig.add_subplot(1,1,1)
                             ax.set_title(r'Expected Feature Map given Hidden States')
-                            ax.set_xlabel(r't')
-                            ax.set_ylabel(r'E[\phi(x,t)|h]')
+                            ax.set_xlabel(r'$t$')
+                            ax.set_ylabel(r'$\mathbb{E}[\phi(x,t)|h]$')
                             
                             plt.plot(mc.unif_partition(n), C_h, linewidth=3)
                             
@@ -168,7 +168,8 @@ def phi_name(phi):
         return "beta_full"
     elif phi == mc.phi_binning or phi == mc.phi_binning_cached:
         return "binning"
-
+    elif phi == mc.phi_binning_igz or phi == mc.phi_binning_igz_cached:
+        return "binning_igz"
 
 if __name__ == '__main__':
 
@@ -212,7 +213,8 @@ if __name__ == '__main__':
     #chrs.append('Y')
     chrs = ['1'] 
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
-    cells = ['E2', 'E1', 'E'] 
+    #cells = ['E2', 'E1', 'E'] 
+    cells = ['E2'] 
     n = 30
     ms = range(1, 6)
     
@@ -224,12 +226,14 @@ if __name__ == '__main__':
     path_name = 'vary_phi'
     segments = [1]
     lengths = [320000]
-    phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
+    phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached, mc.phi_binning_igz_cached]
     real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)
+    
     
     '''
     Expt 2: Vary Sample Size
     
+    '''
     '''
     path_name = 'vary_l'
     segments = [1]
@@ -237,14 +241,15 @@ if __name__ == '__main__':
     phis = [mc.phi_beta_shifted_cached]
     real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)
     '''
+    '''
     Expt 2: Vary the number of Segments
     
+    '''
     '''
     path_name = 'vary_s'
     segments = range(1,6)
     lengths = [320000]
     phis = [mc.phi_beta_shifted_cached]
     real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)    
-    
-    
+    '''
                

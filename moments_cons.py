@@ -23,6 +23,9 @@ def phi_beta_shifted_cached(*args):
 def phi_binning_cached(*args):
     return cache_results(phi_binning)(*args)
 
+def phi_binning_igz_cached(*args):
+    return cache_results(phi_binning_igz)(*args)
+
 def moments_cons(X, phi, N, n):
     
     P_21 = np.zeros((n,n));
@@ -162,25 +165,55 @@ def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
 
     return M_2, M_3
 
+# dealing with (0,0) observation is a bit tricky. Here we create a new dimension for these obs.
+
 def phi_binning(x, N, n):
+    p = np.zeros(n);
+    p[:-1] = phi_binning_igz(x, N, n-1)
+
+    k = int(x) % (N+1);
+    if k == 0:    
+        p[-1] = 1
+
+    return p;
+
+'''
     i = int(x / (N+1));
     k = int(x) % (N+1);
-    
+    p = np.zeros(n)    
+
     if k > i or k == 0:
-        return np.zeros(n)
-        
-    prob = float(k) / i;
-    
-    #print prob
-        
-    p = np.zeros(n)
-    for j in range(n):
-        if (j <= (n-2) and prob >= float(j) / n and prob < float(j+1) / n):
-            p[j] = 1
-        if (j == (n-1) and prob >= float(j) / n and prob <= float(j+1) / n):
-            p[j] = 1
+	    p[n-1] = 1
+    else:
+        prob = float(k) / i;
+        #print prob
+        for j in range(n-1):
+	    if (j <= (n-3) and prob >= float(j) / (n-1) and prob < float(j+1) / (n-1)):
+	        p[j] = 1
+	    if (j == (n-2) and prob >= float(j) / (n-1) and prob <= float(j+1) / (n-1)):
+	        p[j] = 1
     
     return p;
+'''
+
+def phi_binning_igz(x, N, n):
+    i = int(x / (N+1));
+    k = int(x) % (N+1);
+    p = np.zeros(n)    
+
+    if k > i or k == 0:
+        pass
+    else:
+        prob = float(k) / i;
+        #print prob
+        for j in range(n-1):
+	    if (j <= (n-2) and prob >= float(j) / n and prob < float(j+1) / n):
+	        p[j] = 1
+	    if (j == (n-1) and prob >= float(j) / n and prob <= float(j+1) / n):
+	        p[j] = 1
+    
+    return p;
+
 
 def phi_beta_shifted(x, N, n):
     '''
@@ -300,9 +333,11 @@ def get_p(phi, N, n, C_h, a):
         p_h = ((N+1) * np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - 1) / N
     elif (phi == phi_beta_shifted or phi == phi_beta_shifted_cached):            
         p_h = (np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
-    elif (phi == phi_binning or phi == phi_binning_cached):
+    elif (phi == phi_binning_igz or phi == phi_binning_igz_cached):
         p_h = np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0)
-        
+    elif (phi == phi_binning or phi == phi_binning_cached):
+        p_h = np.sum(np.diag(unif_partition(n-1)).dot(C_h[:-1,:]), axis = 0)        
+
     return p_h  
 
 def col_normalize(M):
