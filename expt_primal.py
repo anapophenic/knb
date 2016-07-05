@@ -213,8 +213,8 @@ if __name__ == '__main__':
     #chrs.append('Y')
     chrs = ['1'] 
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
-    #cells = ['E2', 'E1', 'E'] 
-    cells = ['E2'] 
+    cells = ['E2', 'E1', 'E'] 
+    #cells = ['E2'] 
     n = 30
     ms = range(1, 6)
     
@@ -234,22 +234,21 @@ if __name__ == '__main__':
     Expt 2: Vary Sample Size
     
     '''
-    '''
+    
     path_name = 'vary_l'
     segments = [1]
     lengths = [10000,20000, 40000, 80000, 160000, 320000]
     phis = [mc.phi_beta_shifted_cached]
     real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)
-    '''
-    '''
-    Expt 2: Vary the number of Segments
     
     '''
+    Expt 3: Vary the number of Segments
+    
     '''
+    
     path_name = 'vary_s'
     segments = range(1,6)
     lengths = [320000]
     phis = [mc.phi_beta_shifted_cached]
-    real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)    
-    '''
+    real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)
                

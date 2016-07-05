@@ -340,7 +340,8 @@ def trilinear(T,W1,W2,W3):
   N2 = xrange(W2.shape[1])
   N3 = xrange(W3.shape[1])
   NT = xrange(W1.shape[0])
-  X3 = tentopy.tensor_outer(np.zeros(len(N1)), 3)
+
+  X3 = np.zeros((W1.shape[1], W2.shape[1], W3.shape[1]))
   # TODO: figure out the equivalent numpy routines
   if type(T) is str:
     if T == 'I':
@@ -351,7 +352,34 @@ def trilinear(T,W1,W2,W3):
       X3[i1,i2,i3] += T[j1,j2,j3] * W1[j1,i1] * W2[j2,i2] * W3[j3,i3]
   return X3
 
+
+def fast_trilinear(T, W1, W2, W3):
+  NT = W1.shape[0];
+
+  # Generate T is it is implicitly given
+  if type(T) is str:
+    if T == 'I':
+        M = np.zeros((NT, NT, NT));
+    	for i in xrange(NT):
+		M[i,i,i] = 1
+  else:
+    M = T
+
+  M1 = dim_stable_tpm(M, W1, 0)
+  M12 = dim_stable_tpm(M1, W2, 1)
+  M123 = dim_stable_tpm(M12, W3, 2)
+  
+  return M123
+
 # <codecell>
+
+def dim_stable_tpm(M, W, axis):
+  dim = len(np.shape(M))
+  T = np.tensordot(M, W, axes = ([axis], [0]))
+  rear_dims = tuple(range(0, axis) + [dim-1] + range(axis,dim-1))
+  T = np.transpose(T, rear_dims)
+  return T
+
 
 def medianTrick(X,kernel='gaussian'):
   """
@@ -428,3 +456,23 @@ def beta_interval(t, k, l, n):
     
 def unif_partition(n):
     return np.linspace(1.0/(2*n), 1.0 - 1.0/(2*n), n)
+
+if __name__ == '__main__':
+  '''
+  a = np.arange(6).reshape(3,2)
+  b = np.arange(18).reshape(3,6)
+  c = np.arange(24).reshape(3,8)
+
+  m = fast_trilinear('I', a, b, c)
+  n = trilinear('I', a, b, c)
+
+  print 'm = '
+  print m.shape
+  print m
+  print 'n = '
+  print n.shape
+  print n
+
+  print n == m
+  '''
+  

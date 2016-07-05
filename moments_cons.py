@@ -124,8 +124,9 @@ def moments_gt(O, phi, N, n, T, initDist):
     C_2 = C
     C_3 = C.dot(T)
     
-    R_123 = kernelNaiveBayes.trilinear('I', C_1.T, C_2.dot(np.diag(T.dot(initDist))).T, C_3.T);
-    
+    #R_123 = kernelNaiveBayes.trilinear('I', C_1.T, C_2.dot(np.diag(T.dot(initDist))).T, C_3.T);
+    R_123 = kernelNaiveBayes.fast_trilinear('I', C_1.T, C_2.dot(np.diag(T.dot(initDist))).T, C_3.T);    
+
     S_1 = C_2.dot(np.linalg.pinv(C_1))
     S_3 = C_2.dot(np.linalg.pinv(C_3))
 
@@ -161,7 +162,9 @@ def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
     #M_3 = np.tensordot(Q_123, S_1, axes=([0], [1]));
     #M_3 = np.tensordot(M_3, S_3, axes=([2], [1]));
 
-    M_3 = kernelNaiveBayes.trilinear(P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    #M_3 = kernelNaiveBayes.trilinear(P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    M_3 = kernelNaiveBayes.fast_trilinear(P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+
 
     return M_2, M_3
 
