@@ -225,7 +225,7 @@ if __name__ == '__main__':
     '''
     path_name = 'vary_phi'
     segments = [1]
-    lengths = [320000]
+    lengths = [10000]
     phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached, mc.phi_binning_igz_cached]
     real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)
     

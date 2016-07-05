@@ -3,6 +3,7 @@ from scipy import stats
 from scipy import special
 import tentopy
 import kernelNaiveBayes
+import time
 
 def cache_results(a_func):
     '''This decorator funcion binds a map between the tuple of arguments 
@@ -16,6 +17,15 @@ def cache_results(a_func):
         a_func._cache[args] = new_val
         return new_val
     return cached_func
+
+def timing_val(func):
+    def wrapper(*arg, **kw):
+        t1 = time.time()
+        res = func(*arg, **kw)
+        t2 = time.time()
+        print func.__name__ + 'takes' + str(t2 - t1)
+        return res
+    return wrapper
     
 def phi_beta_shifted_cached(*args):
     return cache_results(phi_beta_shifted)(*args)
@@ -162,8 +172,12 @@ def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
     #M_3 = np.tensordot(Q_123, S_1, axes=([0], [1]));
     #M_3 = np.tensordot(M_3, S_3, axes=([2], [1]));
 
-    #M_3 = kernelNaiveBayes.trilinear(P_123, U.dot(S_1.T), U, U.dot(S_3.T))
-    M_3 = kernelNaiveBayes.fast_trilinear(P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    
+    N_3 = timing_val(kernelNaiveBayes.trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    
+    M_3 = timing_val(kernelNaiveBayes.fast_trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+
+    print abs(M_3 - N_3) < 0.001
 
 
     return M_2, M_3
