@@ -172,13 +172,11 @@ def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
     #M_3 = np.tensordot(Q_123, S_1, axes=([0], [1]));
     #M_3 = np.tensordot(M_3, S_3, axes=([2], [1]));
 
-    
-    N_3 = timing_val(kernelNaiveBayes.trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
-    
-    M_3 = timing_val(kernelNaiveBayes.fast_trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    #N_3 = timing_val(kernelNaiveBayes.trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    #M_3 = timing_val(kernelNaiveBayes.fast_trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    #print abs(M_3 - N_3) < 0.001
 
-    print abs(M_3 - N_3) < 0.001
-
+    M_3 = kernelNaiveBayes.fast_trilinear (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
 
     return M_2, M_3
 
