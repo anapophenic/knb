@@ -4,13 +4,16 @@ import data_import as di
 import matplotlib.pyplot as plt
 import dataGenerator as dg
 import os
+import sys
 
-def real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name):
+def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
 
     try:
         os.stat(path_name)
     except:
         os.mkdir(path_name)
+        
+    sys.stdout = open(path_name+'/parameters.txt', 'w+');
     
     for ch in chrs:
         print 'ch = '
@@ -23,7 +26,7 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name):
                 print s
                 print 'Reading Data..'
                 filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
-                N, X_zipped, a = di.data_prep(filename,'explicit', None, s);
+                N, X_zipped, a = di.data_prep(filename,'explicit', None, s, ctxt);
                 
                 #for l in [10000, 20000, 40000, 80000, 160000, 320000]:
                 for l in lengths:
@@ -77,7 +80,7 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name):
                             
                             plt.plot(mc.unif_partition(n), C_h, linewidth=3)
                             
-                            fig.savefig(path_name + '/' + 'cell = ' + ce + '_chr = ' + ch + '_l = ' + str(l) + '_s = ' + str(s) + '_m = ' + str(m) + '_n = ' + str(n) + '_phi = ' + phi_name(phi) + '.pdf')                     
+                            fig.savefig(path_name + '/' + 'cell = ' + ce + '_chr = ' + ch + '_l = ' + str(l) + '_s = ' + str(s) + '_m = ' + str(m) + '_n = ' + str(n) + '_phi = ' + phi_name(phi) + '_ctxt = ' + ctxt_name(ctxt) + '.pdf')                     
                             # save the figure to file
                             plt.close(fig)
                             #print 'Refining using Binomial Knowledge'
@@ -168,12 +171,20 @@ def phi_name(phi):
         return "beta_full"
     elif phi == mc.phi_binning or phi == mc.phi_binning_cached:
         return "binning"
+        
+def ctxt_name(ctxt):
+    s = ""
+    for c in ctxt:
+        s = s + str(c)
+        
+    return s
 
 
 if __name__ == '__main__':
 
 
     np.random.seed(0);
+    
     #N = 3
     #m = 3
     #play with n,
@@ -213,38 +224,43 @@ if __name__ == '__main__':
     chrs = ['1'] 
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
     cells = ['E2', 'E1', 'E'] 
-    n = 30
-    ms = range(1, 6)
+    n = 50
+    ms = range(1, 9)
+    ctxt = range(12, 16)
     
     
     '''
     Expt 1: Compare Binning Feature vs. Beta Feature
     
     '''
-    path_name = 'vary_phi'
-    segments = [1]
+    path_name = 'cg'
+    segments = range(1, 6)
     lengths = [320000]
     phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
-    real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)
+    real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name)
     
     '''
     Expt 2: Vary Sample Size
     
     '''
+    '''
     path_name = 'vary_l'
     segments = [1]
-    lengths = [10000,20000, 40000, 80000, 160000, 320000]
+    lengths = [10000, 20000, 40000, 80000, 160000, 320000]
     phis = [mc.phi_beta_shifted_cached]
-    real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)
+    real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name)
+    '''
     '''
     Expt 2: Vary the number of Segments
     
+    '''
     '''
     path_name = 'vary_s'
     segments = range(1,6)
     lengths = [320000]
     phis = [mc.phi_beta_shifted_cached]
-    real_expt(phis, chrs, cells, segments, lengths, n, ms, path_name)    
+    real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name)    
+    '''
     
     
                
