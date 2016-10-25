@@ -50,7 +50,7 @@ def select_subseq(coverage, methylated, l, ctxt):
 
     return (coverage, methylated)
 
-def seq_prep(filename, l=None, s, ctxt):
+def seq_prep(filename, l=None, s=1, ctxt=range(16)):
   (coverage, methylated) = load_from_file(filename);
 
   if l is None:
