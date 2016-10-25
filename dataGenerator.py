@@ -106,8 +106,8 @@ def generate_seq(T, O, pi, l):
     m = np.shape(pi)[0];
     n = np.shape(O)[0];
 
-    h = [0] * l;
-    x = [0] * l;
+    h = np.int_(np.zeros(l));
+    x = np.int_(np.zeros(l));
 
     for i in range(l):
         if i == 0:
