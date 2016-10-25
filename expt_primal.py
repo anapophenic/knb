@@ -75,8 +75,9 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                             fig = plt.figure(1)
                             ax = fig.add_subplot(1,1,1)
                             ax.set_title(r'Expected Feature Map given Hidden States')
-                            ax.set_xlabel(r't')
-                            ax.set_ylabel(r'E[\phi(x,t)|h]')
+
+                            ax.set_xlabel(r'$t$')
+                            ax.set_ylabel(r'$\mathbb{E}[\phi(x,t)|h]$')
 
                             plt.plot(mc.unif_partition(n), C_h, linewidth=3)
 
@@ -179,7 +180,6 @@ def ctxt_name(ctxt):
 
     return s
 
-
 if __name__ == '__main__':
 
 
@@ -228,7 +228,6 @@ if __name__ == '__main__':
     ms = range(1, 9)
     ctxt = range(12, 16)
 
-
     '''
     Expt 1: Compare Binning Feature vs. Beta Feature
 
@@ -240,21 +239,11 @@ if __name__ == '__main__':
     real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name)
 
     '''
-    Expt 2: Vary Sample Size
-
-    '''
-    '''
-    path_name = 'vary_l'
-    segments = [1]
-    lengths = [10000, 20000, 40000, 80000, 160000, 320000]
-    phis = [mc.phi_beta_shifted_cached]
-    real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name)
-    '''
-    '''
     Expt 2: Vary the number of Segments
 
     '''
     '''
+
     path_name = 'vary_s'
     segments = range(1,6)
     lengths = [320000]
