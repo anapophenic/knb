@@ -35,7 +35,7 @@ def load_from_file(filename):
     print 'length of the original sequence = '
     print len(coverage)
 
-    return (coverage, methylated)
+    return coverage, methylated
 
 def select_subseq(coverage, methylated, l, ctxt):
     coverage = coverage[:l, ctxt]
@@ -48,7 +48,7 @@ def select_subseq(coverage, methylated, l, ctxt):
     coverage = np.sum(coverage, axis=1);
     methylated = np.sum(methylated, axis=1);
 
-    return (coverage, methylated)
+    return coverage, methylated
 
 def seq_prep(filename, l=None, s=1, ctxt=range(16)):
   (coverage, methylated) = load_from_file(filename);
@@ -56,11 +56,13 @@ def seq_prep(filename, l=None, s=1, ctxt=range(16)):
   if l is None:
       l = len(coverage)
 
-  (coverage, methylated) = select_subseq(coverage, methylated, l, ctxt);
+  coverage, methylated = select_subseq(coverage, methylated, l, ctxt);
   # merge every s observations
-  (coverage, methylated) = group(coverage, methylated, s);
+  coverage, methylated = group(coverage, methylated, s);
   print 'length of the grouped sequence = '
   print len(coverage)
+
+  return coverage, methylated
 
 def triples_from_seq(coverage, methylated, formating):
   N = np.amax(coverage)
@@ -70,6 +72,7 @@ def triples_from_seq(coverage, methylated, formating):
 
   X0 = coverage * (N+1) + methylated
 
+  l = len(coverage)
   # compute E[1/(n+2)]
   a = sum(1.0 / (coverage+2)) / l
 
@@ -102,7 +105,7 @@ def data_prep(filename, formating='explicit', l=None, s=1, ctxt=range(16)):
     a: correction term \E[1/(n+2)] used in explicit feature map
   """
 
-  (coverage, methylated) = seq_prep(filename, l, s, ctxt);
+  coverage, methylated = seq_prep(filename, l, s, ctxt);
   return triples_from_seq(coverage, methylated, formating);
 
 

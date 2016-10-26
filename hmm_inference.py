@@ -8,10 +8,21 @@ def forward_var(l, pi, T, p_x_h):
     m = np.shape(pi)[0];
     alpha = np.zeros((m, l));
     for i in range(l):
+        #print '---------------'
         if i == 0:
             alpha[:,i] = np.diag(p_x_h(i)).dot(pi);
         else:
             alpha[:,i] = np.diag(p_x_h(i)).dot(T.dot(alpha[:,i-1]))
+        #normalize
+        alpha[:,i] = alpha[:,i] / np.sum(alpha[:,i])
+
+        #print 'p_x_h_i = '
+        #print p_x_h(i)
+        #print 'alpha_i'
+        #print alpha[:,i]
+        #print '---------------'
+
+    print alpha
 
     return alpha
 
@@ -23,6 +34,10 @@ def backward_var(l, pi, T, p_x_h):
             beta[:,i] = np.ones(m);
         else:
             beta[:,i] = (T.T).dot(np.diag(p_x_h(i+1)).dot(beta[:,i+1])).T
+        #normalize
+        beta[:,i] = beta[:,i] / sum(beta[:,i])
+
+    print beta
 
     return beta
 
@@ -88,10 +103,18 @@ def viterbi_decode(l, pi, T, p_x_h):
     return h_dec
 
 def p_x_h_binom(p_h, coverage, methylated, i):
+
+    #print coverage[i]
+    #print methylated[i]
+
     m = np.shape(p_h)[0];
     O_x = np.zeros(m);
     for j in range(m):
-        O_x[j] = stats.binom.pmf(coverage, methylated, p[j])
+        O_x[j] = stats.binom.pmf(methylated[i], coverage[i], p_h[j])
+        #print 'p = '
+        #print p_h[j]
+        #print 'o = '
+        #print O_x[j]
 
     return O_x
 
@@ -100,6 +123,7 @@ def p_x_h_O(O, x, i):
 
 if __name__ == '__main__':
 
+    '''
     #Synthetic Dataset:
     n = 20
     m = 6
@@ -129,25 +153,53 @@ if __name__ == '__main__':
     print h_dec_p
     print h_dec_v
 
+    #(coverage, methylated) = seq_prep(filename, l, s, ctxt);
+    '''
+
 
     #Real Dataset:
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
     #chrs.append('Y')
-    #chrs = ['1']
+    chrs = ['1']
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
-    #cells = ['E2', 'E1', 'E']
+    cells = ['E2', 'E1', 'E']
 
-    #ch = chrs[0];
-    #ce = cells[0];
+    ch = chrs[0];
+    ce = cells[0];
 
-    #filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat';
+    filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat';
 
-    #ctxt = range(12, 16)
-    #segments = range(1, 6)
-    #s = segments[0];
+    #ctxt = range(16)
+    ctxt = range(12, 16)
+    segments = range(1, 6)
+    s = segments[0];
 
-    #lengths = [320000]
-    #l = lengths[0];
+    lengths = [320000]
+    l = lengths[0];
 
-    #(coverage, methylated) = seq_prep(filename, l, s, ctxt);
+    phi = mc.phi_beta_shifted_cached;
+    n = 20
+    m = 4
+
+    N, X_zipped, a = di.data_prep(filename,'explicit', None, s, ctxt);
+    X_importance_weighted = di.prefix(X_zipped, l)
+    P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
+    C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
+    p_h = mc.get_p(phi, N, n, C_h, a)
+
+    #T_h = np.array([[ 0.8993886, 0.28601558],[0.1006114 , 0.71398442]])
+    #pi_h = np.array([ 0.73962056, 0.26037944])
+    #p_h = np.array([ 0.92750509,  0.30209752])
+
+    print T_h
+    print pi_h
+    print p_h
+
+    l_i = 320000
+    coverage, methylated = di.seq_prep(filename, l_i, s, ctxt);
+
+    p_x_h = lambda i: p_x_h_binom(p_h, coverage, methylated, i)
+    h_dec_p = posterior_decode(l_i, pi_h, T_h, p_x_h);
+
+    print h_dec_p.tolist()
