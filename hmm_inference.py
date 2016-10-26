@@ -8,21 +8,12 @@ def forward_var(l, pi, T, p_x_h):
     m = np.shape(pi)[0];
     alpha = np.zeros((m, l));
     for i in range(l):
-        #print '---------------'
         if i == 0:
             alpha[:,i] = np.diag(p_x_h(i)).dot(pi);
         else:
             alpha[:,i] = np.diag(p_x_h(i)).dot(T.dot(alpha[:,i-1]))
         #normalize
         alpha[:,i] = alpha[:,i] / np.sum(alpha[:,i])
-
-        #print 'p_x_h_i = '
-        #print p_x_h(i)
-        #print 'alpha_i'
-        #print alpha[:,i]
-        #print '---------------'
-
-    print alpha
 
     return alpha
 
@@ -36,8 +27,6 @@ def backward_var(l, pi, T, p_x_h):
             beta[:,i] = (T.T).dot(np.diag(p_x_h(i+1)).dot(beta[:,i+1])).T
         #normalize
         beta[:,i] = beta[:,i] / sum(beta[:,i])
-
-    print beta
 
     return beta
 

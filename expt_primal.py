@@ -2,7 +2,7 @@ import moments_cons as mc
 import numpy as np
 import data_import as di
 import matplotlib.pyplot as plt
-import dataGenerator as dg
+import data_generator as dg
 import os
 import sys
 
@@ -26,7 +26,7 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                 print s
                 print 'Reading Data..'
                 filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
-                N, X_zipped, a = di.data_prep(filename,'explicit', None, s, ctxt);
+                N, x_zipped, a = di.data_prep(filename,'explicit', None, s, ctxt);
 
                 #for l in [10000, 20000, 40000, 80000, 160000, 320000]:
                 for l in lengths:
@@ -37,7 +37,7 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                     print 'a = '
                     print a
 
-                    X_importance_weighted = di.prefix(X_zipped, l)
+                    x_importance_weighted = di.prefix(x_zipped, l)
                     print l
 
                     #X = X[:10000,:]
@@ -131,12 +131,12 @@ def synthetic_expt(phi, m):
     a = mc.get_a(N);
 
     print 'Generating Data..'
-    X_zipped = dg.generateData_general(T, O, pi, l)
-    X_zipped = [tuple(row) for row in X_zipped]
+    x_zipped = dg.generate_longchain(T, O, pi, l)
+    x_zipped = [tuple(row) for row in x_zipped]
     #X = dataGenerator.generateData_firstFew(N, m, T, p, pi, l)
 
-    X_importance_weighted = di.prefix(X_zipped, l);
-    P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
+    x_importance_weighted = di.prefix(x_zipped, l);
+    P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
     R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = mc.moments_gt(O, phi, N, n, T, pi)
     #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
     print 'C = '
