@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import stats
 
 def unif_partition(n):
     return np.linspace(1.0/(2*n), 1.0 - 1.0/(2*n), n)
@@ -36,7 +37,7 @@ def proj_zeroone(p):
 
     return p
 
-def generate_O_binom(m, N, p):
+def get_O_binom(m, N, p):
     O = np.zeros((N+1, m));
 
     for i in xrange(N+1):
@@ -47,7 +48,7 @@ def generate_O_binom(m, N, p):
     return O
 
 
-def generate_O_stochastic_N(m, p_N, p):
+def get_O_stochastic_N(m, p_N, p):
     N = np.shape(p_N)[0] - 1
     O = np.zeros(((N+1)*(N+1), m))
 
@@ -62,14 +63,31 @@ def generate_O_stochastic_N(m, p_N, p):
                 #    print i,k,j,p[j]
                 O[(N+1)*i + k, j] = stats.binom.pmf(k, i, p[j]) * p_N[i]
 
-
     return O
 
+def ctxt_name(ctxt):
+    s = ""
+    for c in ctxt:
+        s = s + str(c)
 
+    return s
 
-def generate_O(m, N, min_sigma_o):
+#binomial hmm function returning a particular row of observation matrix depending
+#on the position of the observation
+def p_x_h_binom(p_h, coverage, methylated, i):
+    #print coverage[i]
+    #print methylated[i]
+    #print 'p = '
+    #print p_h[j]
+    #print 'o = '
+    #print O_x[j]
+    m = np.shape(p_h)[0];
+    O_x = np.zeros(m);
+    for j in range(m):
+        O_x[j] = stats.binom.pmf(methylated[i], coverage[i], p_h[j])
+    return O_x
 
-    O = dataGenerator.makeObservationMatrix(m, N+1, min_sigma_o)
-    #O = np.eye(3);
-    #O = np.asarray([[0.5, 0], [0, 0.5], [0.5, 0.5]])
-    return O
+#hmm function returning a particular row of observation matrix depending
+#on the position of the observation
+def p_x_h_O(O, x, i):
+    return O[x[i],:]

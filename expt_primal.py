@@ -1,8 +1,11 @@
 import moments_cons as mc
+import data_generator as dg
+import binom_hmm as bh
+import feature_map as fm
 import numpy as np
 import data_import as di
 import matplotlib.pyplot as plt
-import data_generator as dg
+import hmm_inference as hi
 import os
 import sys
 
@@ -37,7 +40,7 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                     print 'a = '
                     print a
 
-                    x_importance_weighted = di.prefix(x_zipped, l)
+                    x_importance_weighted = di.importance_weightify(x_zipped, l)
                     print l
 
                     #X = X[:10000,:]
@@ -60,15 +63,15 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                         for m in ms:
                             print 'm = '
                             print m
-                            C_h, T_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
-                            #C_h, T_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
+                            C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
+                            #C_h, T_h, pi_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
                             print 'C_h = '
                             print C_h
 
                             print 'T_h = '
                             print T_h
 
-                            p_h = mc.get_p(phi, N, n, C_h, a)
+                            p_h = fm.get_p(phi, N, n, C_h, a)
                             print 'p_h = '
                             print p_h
 
@@ -79,9 +82,9 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                             ax.set_xlabel(r'$t$')
                             ax.set_ylabel(r'$\mathbb{E}[\phi(x,t)|h]$')
 
-                            plt.plot(mc.unif_partition(n), C_h, linewidth=3)
+                            plt.plot(bh.unif_partition(n), C_h, linewidth=3)
 
-                            fig.savefig(path_name + '/' + 'cell = ' + ce + '_chr = ' + ch + '_l = ' + str(l) + '_s = ' + str(s) + '_m = ' + str(m) + '_n = ' + str(n) + '_phi = ' + phi_name(phi) + '_ctxt = ' + ctxt_name(ctxt) + '.pdf')
+                            fig.savefig(path_name + '/' + 'cell = ' + ce + '_chr = ' + ch + '_l = ' + str(l) + '_s = ' + str(s) + '_m = ' + str(m) + '_n = ' + str(n) + '_phi = ' + fm.phi_name(phi) + '_ctxt = ' + ctxt_name(ctxt) + '.pdf')
                             # save the figure to file
                             plt.close(fig)
                             #print 'Refining using Binomial Knowledge'
@@ -93,8 +96,22 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                             #print T_h_p
                             #print get_p(phi, N, n, O_h)
 
+def decoding_simulation(p, T, pi, p_h, T_h, pi_h)
+    l = 5000;
+    N = 20;
+    x, h = generate_seq(T, O, pi, l)
 
-def synthetic_expt(phi, m):
+
+
+
+def synthetic_expt(phi, m, path_name):
+
+    try:
+        os.stat(path_name)
+    except:
+        os.mkdir(path_name)
+
+    sys.stdout = open(path_name+'/parameters.txt', 'w+');
 
     n = 20
     N = 30
@@ -113,10 +130,10 @@ def synthetic_expt(phi, m):
     print 'p_N = '
     print p_N
 
-    #O = generate_O_binom(m, N, p);
-    #O = generate_O(m, N, min_sigma_o);
-    O = mc.generate_O_stochastic_N(m, p_N, p);
-    #O = mc.generate_O(m, n, min_sigma_o);
+    #O = get_O_binom(m, N, p);
+    #O = get_O(m, N, min_sigma_o);
+    O = bh.get_O_stochastic_N(m, p_N, p);
+    #O = dg.generate_O(m, n, min_sigma_o);
     print 'O = '
     print O
 
@@ -128,14 +145,13 @@ def synthetic_expt(phi, m):
     print 'pi = '
     print pi
 
-    a = mc.get_a(N);
-
     print 'Generating Data..'
-    x_zipped = dg.generate_longchain(T, O, pi, l)
-    x_zipped = [tuple(row) for row in x_zipped]
+    #x_zipped = dg.generate_longchain(T, O, pi, l)
+    x_zipped = dg.generate_firstfew(T, O, pi, l)
+    #x_zipped = [tuple(row) for row in x_zipped]
     #X = dataGenerator.generateData_firstFew(N, m, T, p, pi, l)
 
-    x_importance_weighted = di.prefix(x_zipped, l);
+    x_importance_weighted = di.importance_weightify(x_zipped, l);
     P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
     R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = mc.moments_gt(O, phi, N, n, T, pi)
     #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
@@ -145,40 +161,26 @@ def synthetic_expt(phi, m):
     for m_hat in range(2,10,1):
         print 'm_hat = '
         print m_hat
-        C_h, T_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m_hat)
-        #C_h, T_h = mc.estimate(R_21, R_31, R_23, R_13, R_123, m_hat)
+        C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m_hat)
+        #C_h, T_h, pi_h = mc.estimate(R_21, R_31, R_23, R_13, R_123, m_hat)
         print 'C_h = '
         print C_h
+
+        p_h = fm.get_p(phi, N, n, C_h, fm.get_a(N))
+        print 'p_h = '
+        print p_h
 
         print 'T_h = '
         print T_h
 
-        p_h = mc.get_p(phi, N, n, C_h, a)
-        print 'p_h = '
-        print p_h
+        print 'pi_h = '
+        print pi_h
 
         fig = plt.figure(1)
-        plt.plot(mc.unif_partition(n), C_h)
-        fig.savefig( 'phi = ' + phi_name(phi) + '_m = ' + str(m) +  '_l = ' + str(l) + '_m_hat = ' + str(m_hat) + '_n = ' + str(n) + '.pdf')   # save the figure to file
+        plt.plot(bh.unif_partition(n), C_h)
+        fig.savefig( path_name + '/' + 'phi = ' + fm.phi_name(phi) + '_m = ' + str(m) +  '_l = ' + str(l) + '_m_hat = ' + str(m_hat) + '_n = ' + str(n) + '.pdf')   # save the figure to file
         plt.close(fig)
 
-
-def phi_name(phi):
-    if phi == mc.phi_onehot:
-        return "onehot"
-    elif phi == mc.phi_beta:
-        return "beta_fixN"
-    elif phi == mc.phi_beta_shifted or phi == mc.phi_beta_shifted_cached:
-        return "beta_full"
-    elif phi == mc.phi_binning or phi == mc.phi_binning_cached:
-        return "binning"
-
-def ctxt_name(ctxt):
-    s = ""
-    for c in ctxt:
-        s = s + str(c)
-
-    return s
 
 if __name__ == '__main__':
 
@@ -213,11 +215,14 @@ if __name__ == '__main__':
     #if phi == mc.phi_onehot:
     #    n = N + 1
 
-    #for phi in [mc.phi_beta_shifted_cached, mc.phi_binning_cached]:
+    #for phi in [fm.phi_beta_shifted_cached, fm.phi_binning_cached]:
     #    for m in range(2,10,1):
     #        synthetic_expt(phi, m)
 
+    path_name = 'synthetic/1026'
+    synthetic_expt(fm.phi_beta_shifted_cached, 3, path_name);
 
+    '''
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
     #chrs.append('Y')
@@ -227,16 +232,19 @@ if __name__ == '__main__':
     n = 50
     ms = range(1, 9)
     ctxt = range(12, 16)
+    '''
 
     '''
     Expt 1: Compare Binning Feature vs. Beta Feature
 
+    '''
     '''
     path_name = 'cg'
     segments = range(1, 6)
     lengths = [320000]
     phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name)
+    '''
 
     '''
     Expt 2: Vary the number of Segments

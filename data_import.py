@@ -16,11 +16,10 @@ def group(coverage, methylated, s):
 
   return coverage, methylated
 
-def prefix(X_zipped, l):
-
+def importance_weightify(x_zipped, l):
     # preparing data
     #l = np.shape(X_zipped)[0]
-    return Counter(X_zipped[:l])
+    return Counter(x_zipped[:l])
 
 def load_from_file(filename):
     mat = scipy.io.loadmat(filename)

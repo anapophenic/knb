@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-# <nbformat>3.0</nbformat>
-
-# <codecell>
-
 import numpy as np
 import scipy
 import binom_hmm as bh
@@ -47,7 +42,22 @@ def weighted_values(values, probabilities, size):
     bins = np.add.accumulate(probabilities)
     return values[np.digitize(np.random.random_sample(size), bins)]
 
-def generate_seq(T, O, pi, l):
+def generate_seq_p(p, N, T, pi, l):
+    m = np.shape(T)[0];
+    O = get_O_stochastic_N(m, np.ones(N+1)/(N+1), p);
+    return generate_seq(O, T, pi, l)
+
+def generate_firstfew_p(p, N, T, pi, l):
+    m = np.shape(T)[0];
+    O = get_O_stochastic_N(m, np.ones(N+1)/(N+1), p);
+    return generate_firstfew_p(O, T, pi, l)
+
+def generate_longchain_p(p, N, T, pi, l):
+    m = np.shape(T)[0];
+    O = get_O_stochastic_N(m, np.ones(N+1)/(N+1), p);
+    return generate_longchain(O, T, pi, l)
+
+def generate_seq(O, T, pi, l):
 
     m = np.shape(pi)[0];
     n = np.shape(O)[0];
@@ -66,7 +76,7 @@ def generate_seq(T, O, pi, l):
 
     return x, h
 
-def generate_firstfew(T, O, pi, l):
+def generate_firstfew(O, T, pi, l):
     ### This function generates l triples, each representing methylation counts at first 3 sites of a sequence
     ### Data generated from an HMM with transition matrix T and obervation matrix O
     #   T and O are column stochastic
@@ -78,7 +88,7 @@ def generate_firstfew(T, O, pi, l):
 
     return x_zipped
 
-def generate_longchain(T, O, pi, l):
+def generate_longchain(O, T, pi, l):
 
     x, h = generate_seq(T, O, pi, l+2);
     x_zipped = np.array(zip(x[0:l], x[1:l+1], x[2:l+2]))

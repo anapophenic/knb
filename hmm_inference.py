@@ -1,8 +1,10 @@
-import numpy as np
 import data_import as di
-from scipy import stats
-import dataGenerator as dg
+import data_generator as dg
 import moments_cons as mc
+import binom_hmm as bh
+import numpy as np
+from scipy import stats
+
 
 def forward_var(l, pi, T, p_x_h):
     m = np.shape(pi)[0];
@@ -47,8 +49,6 @@ def posterior_decode(l, pi, T, p_x_h):
 
     for i in range(l):
         alphabeta = alpha[:,i] * beta[:,i];
-        #print alphabeta
-        #print np.sum(alphabeta)
         h_dec[i] = np.argmax(alphabeta)
 
     return h_dec
@@ -91,25 +91,6 @@ def viterbi_decode(l, pi, T, p_x_h):
 
     return h_dec
 
-def p_x_h_binom(p_h, coverage, methylated, i):
-
-    #print coverage[i]
-    #print methylated[i]
-
-    m = np.shape(p_h)[0];
-    O_x = np.zeros(m);
-    for j in range(m):
-        O_x[j] = stats.binom.pmf(methylated[i], coverage[i], p_h[j])
-        #print 'p = '
-        #print p_h[j]
-        #print 'o = '
-        #print O_x[j]
-
-    return O_x
-
-def p_x_h_O(O, x, i):
-    return O[x[i],:]
-
 if __name__ == '__main__':
 
     '''
@@ -133,7 +114,7 @@ if __name__ == '__main__':
     print pi
 
     x, h = dg.generate_seq(T, O, pi, l);
-    p_x_h = lambda i: p_x_h_O(O, x, i);
+    p_x_h = lambda i: bh.p_x_h_O(O, x, i);
 
     h_dec_p = posterior_decode(l, pi, T, p_x_h);
     h_dec_v = viterbi_decode(l, pi, T, p_x_h);
@@ -188,7 +169,7 @@ if __name__ == '__main__':
     l_i = 320000
     coverage, methylated = di.seq_prep(filename, l_i, s, ctxt);
 
-    p_x_h = lambda i: p_x_h_binom(p_h, coverage, methylated, i)
+    p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage, methylated, i)
     h_dec_p = posterior_decode(l_i, pi_h, T_h, p_x_h);
 
     print h_dec_p.tolist()

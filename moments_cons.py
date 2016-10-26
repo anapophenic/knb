@@ -1,9 +1,8 @@
 import numpy as np
-from scipy import stats
-from scipy import special
 import tentopy
-import kernelNaiveBayes
-import time
+import numerical_la as nla
+import feature_map as fm
+import binom_hmm as bh
 
 def moments_cons(X, phi, N, n):
 
@@ -88,10 +87,10 @@ def moments_gt(O, phi, N, n, T, initDist):
     C_1_tilde = np.dot(C, np.dot(np.diag(initDist), T.T))
     C_2 = C
     C_3 = np.dot(C, T)
-    P_123 = kernelNaiveBayes.trilinear('I', C_1.T, np.dot(C_2, np.diag(np.dot(T, initDist))).T, C_3.T);
+    P_123 = nla.trilinear('I', C_1.T, np.dot(C_2, np.diag(np.dot(T, initDist))).T, C_3.T);
     '''
 
-    C = gt_obs(phi, N, n, O);
+    C = fm.gt_obs(phi, N, n, O);
 
     R_21 = C.dot(T.dot(np.diag(initDist).dot(C.T)))
     R_31 = C.dot(T.dot(T.dot(np.diag(initDist).dot(C.T))))
@@ -103,8 +102,8 @@ def moments_gt(O, phi, N, n, T, initDist):
     C_2 = C
     C_3 = C.dot(T)
 
-    #R_123 = kernelNaiveBayes.trilinear('I', C_1.T, C_2.dot(np.diag(T.dot(initDist))).T, C_3.T);
-    R_123 = kernelNaiveBayes.fast_trilinear('I', C_1.T, C_2.dot(np.diag(T.dot(initDist))).T, C_3.T);
+    #R_123 = nla.trilinear('I', C_1.T, C_2.dot(np.diag(T.dot(initDist))).T, C_3.T);
+    R_123 = nla.fast_trilinear('I', C_1.T, C_2.dot(np.diag(T.dot(initDist))).T, C_3.T);
 
     S_1 = C_2.dot(np.linalg.pinv(C_1))
     S_3 = C_2.dot(np.linalg.pinv(C_3))
@@ -141,53 +140,13 @@ def symmetrize(P_21, P_31, P_23, P_13, P_123, U):
     #M_3 = np.tensordot(Q_123, S_1, axes=([0], [1]));
     #M_3 = np.tensordot(M_3, S_3, axes=([2], [1]));
 
-    #N_3 = timing_val(kernelNaiveBayes.trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
-    #M_3 = timing_val(kernelNaiveBayes.fast_trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    #N_3 = timing_val(nla.trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    #M_3 = timing_val(nla.fast_trilinear) (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
     #print abs(M_3 - N_3) < 0.001
 
-    M_3 = kernelNaiveBayes.fast_trilinear (P_123, U.dot(S_1.T), U, U.dot(S_3.T))
+    M_3 = nla.fast_trilinear(P_123, U.dot(S_1.T), U, U.dot(S_3.T))
 
     return M_2, M_3
-
-
-
-def get_O(phi, N, n, C_h, a):
-    '''
-        Input:
-            phi: feature map
-            [0..N]: possible values x can take
-            n: dimensionality of feature map
-            C_h: estimated observation matrix
-        Output:
-            p_h: estimated methylating probability
-    '''
-    p_h = get_p(phi, N, n, C_h, a);
-
-    if (phi == phi_onehot or phi == phi_beta):
-        O_h = generate_O_binom(m, N, p_h)
-    elif (phi == phi_beta_shifted or phi == phi_binning):
-        # implicit assuming the coverage is uniform distributed, which may be wrong
-        O_h = generate_O_stochastic_N(m, N, p_h)
-
-    return O_h
-
-
-def get_p(phi, N, n, C_h, a):
-
-    if (phi == phi_onehot):
-        p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
-    elif (phi == phi_beta):
-        p_h = ((N+1) * np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - 1) / N
-    elif (phi == phi_beta_shifted or phi == phi_beta_shifted_cached):
-        p_h = (np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
-    elif (phi == phi_binning_igz or phi == phi_binning_igz_cached):
-        p_h = np.sum(np.diag(unif_partition(n)).dot(C_h), axis = 0)
-    elif (phi == phi_binning or phi == phi_binning_cached):
-        p_h = np.sum(np.diag(unif_partition(n-1)).dot(C_h[:-1,:]), axis = 0)
-
-    p_h = proj_zeroone(p_h)
-
-    return p_h
 
 def check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123):
     print np.linalg.norm(P_21 - R_21)
@@ -205,21 +164,21 @@ def estimate(P_21, P_31, P_23, P_13, P_123, m):
     Lambda, U_T_O = tentopy.reconstruct(W, X_3);
 
     O_h = np.dot(U, U_T_O.T)
-    O_h = col_normalize_post(O_h)
+    O_h = bh.col_normalize_post(O_h)
 
     T_h = np.linalg.pinv(O_h).dot(P_21.dot(np.linalg.pinv(O_h.T)))
     pi_h = np.sum(T_h, axis = 0);
 
-    pi_h = normalize_post(pi_h)
-    T_h = col_normalize_post(T_h)
+    pi_h = bh.normalize_post(pi_h)
+    T_h = bh.col_normalize_post(T_h)
 
     return O_h, T_h, pi_h
 
 def estimate_refine(C_h, P_21, phi, N, n, m, a):
 
-    O_h = get_O(phi, N, n, C_h, a)
-    C_h_p = gt_obs(phi, N, n, O_h)
+    O_h = fm.get_O(phi, N, n, C_h, a)
+    C_h_p = fm.gt_obs(phi, N, n, O_h)
     T_h_p = np.linalg.pinv(C_h_p).dot(P_21.dot(np.linalg.pinv(C_h_p.T)))
-    T_h_p = col_normalize_post(T_h_p)
+    T_h_p = bh.col_normalize_post(T_h_p)
 
     return C_h_p, T_h_p

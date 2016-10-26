@@ -1,4 +1,7 @@
 import numpy as np
+import binom_hmm as bh
+from scipy import stats
+import time
 
 def cache_results(a_func):
     '''This decorator funcion binds a map between the tuple of arguments
@@ -97,8 +100,8 @@ def phi_beta_shifted(x, N, n):
     if k > i:
         return np.zeros(n)
 
-    #p = np.asarray(map(lambda t: (t ** k) * ( (1-t) ** (i - k) ), unif_partition(n).tolist()));
-    p = np.asarray(map(lambda t: beta_interval(t, k, i-k, n), unif_partition(n).tolist()));
+    #p = np.asarray(map(lambda t: (t ** k) * ( (1-t) ** (i - k) ), bh.unif_partition(n).tolist()));
+    p = np.asarray(map(lambda t: beta_interval(t, k, i-k, n), bh.unif_partition(n).tolist()));
 
     return p / sum(p);
 
@@ -116,8 +119,8 @@ def phi_beta(x, N, n):
     #print x
     #print N
 
-    #p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** (N-x) ), unif_partition(n).tolist()));
-    p = np.asarray(map(lambda t: beta_interval(t, x, N-x, n), unif_partition(n).tolist()));
+    #p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** (N-x) ), bh.unif_partition(n).tolist()));
+    p = np.asarray(map(lambda t: beta_interval(t, x, N-x, n), bh.unif_partition(n).tolist()));
     return p / sum(p);
 
 def phi_onehot(x, N, n):
@@ -166,3 +169,52 @@ def get_a(N):
 
 def beta_interval(t, k, l, n):
     return stats.beta.cdf(t+0.5/n, k+1, l+1) - stats.beta.cdf(t-0.5/n, k+1, l+1)
+
+def phi_name(phi):
+    if phi == phi_onehot:
+        return "onehot"
+    elif phi == phi_beta:
+        return "beta_fixN"
+    elif phi == phi_beta_shifted or phi == phi_beta_shifted_cached:
+        return "beta_full"
+    elif phi == phi_binning or phi == phi_binning_cached:
+        return "binning"
+
+
+def get_O(phi, N, n, C_h, a):
+    '''
+        Input:
+            phi: feature map
+            [0..N]: possible values x can take
+            n: dimensionality of feature map
+            C_h: estimated observation matrix
+        Output:
+            p_h: estimated methylating probability
+    '''
+    p_h = get_p(phi, N, n, C_h, a);
+
+    if (phi == phi_onehot or phi == phi_beta):
+        O_h = get_O_binom(m, N, p_h)
+    elif (phi == phi_beta_shifted or phi == phi_binning):
+        # implicit assuming the coverage is uniform distributed, which may be wrong
+        O_h = get_O_stochastic_N(m, N, p_h)
+
+    return O_h
+
+
+def get_p(phi, N, n, C_h, a):
+
+    if (phi == phi_onehot):
+        p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
+    elif (phi == phi_beta):
+        p_h = ((N+1) * np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0) - 1) / N
+    elif (phi == phi_beta_shifted or phi == phi_beta_shifted_cached):
+        p_h = (np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
+    elif (phi == phi_binning_igz or phi == phi_binning_igz_cached):
+        p_h = np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0)
+    elif (phi == phi_binning or phi == phi_binning_cached):
+        p_h = np.sum(np.diag(bh.unif_partition(n-1)).dot(C_h[:-1,:]), axis = 0)
+
+    p_h = bh.proj_zeroone(p_h)
+
+    return p_h

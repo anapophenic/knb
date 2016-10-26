@@ -6,7 +6,7 @@
 # Last modified: 29 March 2016
 #
 # Sample usage: see knbTest.py.  The main functions are kernHMM and kernXMM
-# 
+#
 ###############################################################################
 import numpy as np
 import scipy
@@ -29,18 +29,18 @@ def kernHMM(X,k,kernel='gaussian',symmetric=False,var=1, xRange=None):
   """
   Main function for learning Hidden Markov Model with D-dimensional obs.
   Inputs:
-     X: D x (m+2) matrix with m+2 samples of dimension D 
+     X: D x (m+2) matrix with m+2 samples of dimension D
      k: rank of model (number of hidden states)
      symmetric: whether the model has symmetric views or not (should be False
          for HMM)
      xRange: range of X's for which to compute p(x|h). each row is a point.
      var: variance of the kernel (for most kernels).  for beta kernel, var is a
-         list with var[0] = numObs and var[1] = desired dimensionality of 
+         list with var[0] = numObs and var[1] = desired dimensionality of
          output feature map.
   Otputs:
      pXbarH:  probabilitiy densities of hidden states (i.e., p(x|h)) at points
          specified by xrange. This is len(xrange) x k array.
-  """    
+  """
   xRange = np.matrix(xRange)
   if xRange.shape[0]==1:
       xRange = xRange.T
@@ -50,28 +50,28 @@ def kernHMM(X,k,kernel='gaussian',symmetric=False,var=1, xRange=None):
     pXbarH = G*A
   else:
     pXbarH = crossComputeKerns(xRange,np.matrix(X)[2:,:])*A
-  return pXbarH  
+  return pXbarH
 
 # <codecell>
 
 def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
   """
-  Main function for learning three-view mixture model 
+  Main function for learning three-view mixture model
   Inputs:
      X: D x 3 matrix with m observatioons from each of 3 views
      k: rank of model (number of hidden states)
   Optional inputs:
-     queryX: D_test x 1 matrix of test points for which to comptue p(x|h). If 
+     queryX: D_test x 1 matrix of test points for which to comptue p(x|h). If
              queryX is None, queryX is set to X[:,2]
      kernel: kernel to use for smoothing probability distributions p(x|h)
      var: variance of kernel (smoothing).
      symmetric: whether to use the symmetric version of algorithm (set to False)
   Otputs:
-     O_h: probabilitiy densities p(x|h); a discretized finite-dimensional 
+     O_h: probabilitiy densities p(x|h); a discretized finite-dimensional
              version of observation operator (observation matrix)
-     T_h: probability densities p(h_2|h_1); a discretized finite-dimensional 
+     T_h: probability densities p(h_2|h_1); a discretized finite-dimensional
              version of transition operator (transition matrix)
-  """    
+  """
   (K,L,G) = computeKerns3(X,kernel,symmetric,var)
   if symmetric:
     (A,pi) = kernSpecSymm(np.hstack(K,L), np.hstack(L,K),k)
@@ -83,7 +83,7 @@ def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
   if queryX is None:
     O_h = G*A
     T_h = pinvA*L*G*pinvA.T
-  else: 
+  else:
   #  pXbarH = crossComputeKerns(queryX,np.matrix(X[:,2]).T,kernel,symmetric,var)*A
     KL = crossComputeKerns(queryX,X[:,2].T,kernel,symmetric,var)
     O_h = KL*A
@@ -91,10 +91,10 @@ def kernXMM(X,k,queryX=None, kernel='gaussian', var=1, symmetric=False):
   return O_h, T_h
 
 # <codecell>
-    
+
 def returnKernel(kernel, var=1):
   """
-  Utility function to return the correct kernel function given a string 
+  Utility function to return the correct kernel function given a string
   identifying the name of the kernel
   """
   kernel = kernel.lower()
@@ -113,18 +113,18 @@ def returnKernel(kernel, var=1):
     kern = lambda XX: dot(np.matrix(phi_beta(XX,var[0],var[1])))
   elif kernel in ['beta_shifted','beta shifted']:
     dot = lambda XX: XX.dot(XX.T)
-    kern = lambda XX: dot(np.matrix(phi_beta_shifted(XX,var[0],var[1])))      
+    kern = lambda XX: dot(np.matrix(phi_beta_shifted(XX,var[0],var[1])))
   return kern
 
 # <codecell>
-  
+
 def crossComputeKerns(X,Y,kernel,symmetric,var=1):
   """
   Compute pairwise kernel between points in two matrices
   Inputs:
-     X: m x D matrix with m samples of dimension D 
+     X: m x D matrix with m samples of dimension D
      kernel: (string) name of kernel being computed
-     Y: n x D matrix with n samples of dimension D 
+     Y: n x D matrix with n samples of dimension D
      kernel: (string) name of kernel being computed
      k: (int) rank of model (number of hidden states)
      symmetric: whether the model has symmetric views or not (should be false
@@ -153,16 +153,16 @@ def crossComputeKerns(X,Y,kernel,symmetric,var=1):
   elif kernel in ['beta_shifted','beta shifted']:
     kern = lambda XX,YY: np.matrix(phi_beta_shifted(XX,var[0],var[1]).dot(
                                    phi_beta_shifted(YY,var[0],var[1]).T))
-  K = kern(X,Y)   
+  K = kern(X,Y)
   return K
 
 # <codecell>
-    
+
 def computeKerns(X,kernel,symmetric, var=1):
   """
   Compute pairwise kernels between D-dimensional points arranged into a matrix
   Inputs:
-     X: m x D matrix with m samples of dimension D 
+     X: m x D matrix with m samples of dimension D
      kernel: (string) name of kernel being computed
      k: (int) rank of model (number of hidden states)
      symmetric: whether the model has symmetric views or not (should be false
@@ -177,14 +177,14 @@ def computeKerns(X,kernel,symmetric, var=1):
      G: kernel matrix of third view
   """
   kern = returnKernel(kernel,var)
-  K = kern(X)   
+  K = kern(X)
   if symmetric:
     return (K[:-1,:-1], K[1:,1:], None)
   else:
     return (K[:-2,:-2],K[1:-1,1:-1],K[2:,2:])
 
 # <codecell>
-    
+
 def computeKerns3(X,kernel,symmetric, var=1):
   """
   Compute the kernel for samples from 3 views
@@ -208,7 +208,7 @@ def computeKerns3(X,kernel,symmetric, var=1):
   return (kern(X0),kern(X1),kern(X2))
 
 # <codecell>
-  
+
 def kernSpecAsymm(K,L,G,k,view=2,lambda0=1e-2):
   """
   Algorithm 1 from Song et al. (2014). adapted to asymmetric view
@@ -226,7 +226,7 @@ def kernSpecAsymm(K,L,G,k,view=2,lambda0=1e-2):
   K,L,G = np.matrix(K), np.matrix(L), np.matrix(G)
   m = K.shape[1]  # number of samples per view
   if view==2:
-    S, beta = sortedEig(K*G*K/(m**2),K,k,lambda0)  
+    S, beta = sortedEig(K*G*K/(m**2),K,k,lambda0)
     t1 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)
     S, beta = sortedEig(G*K*G/(m**2),G,k,lambda0)#Lnk = L*np.matrix(sortedEig(L*K*L,L,k)[1].real)
     t2 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)
@@ -234,22 +234,22 @@ def kernSpecAsymm(K,L,G,k,view=2,lambda0=1e-2):
     H = Gnk*np.linalg.inv(Knk.T*Gnk)*Knk.T  #NEEDS TO BE VERIFIED
     (S,beta) = sortedEig(L*H.T*L*H*L/(m**2),L,k,lambda0) #find generalized eigenvectors
     S,beta=S.real,np.matrix(beta.real)
-    Sroot = np.matrix(np.diag(np.power(S,-0.5))) 
+    Sroot = np.matrix(np.diag(np.power(S,-0.5)))
     term1 = L*beta*Sroot
-    T = trilinear('I', H.T*term1,term1, H*term1)/m  
+    T = trilinear('I', H.T*term1,term1, H*term1)/m
   elif view==3:
     S, beta = sortedEig(K*L*K/(m**2),K,k,lambda0)
     t1 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)
     S, beta = sortedEig(L*K*L/(m**2),L,k,lambda0)#Lnk = L*np.matrix(sortedEig(L*K*L,L,k)[1].real)
-    t2 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)  
-    Knk = K*t1; Lnk = L*t2  
+    t2 = np.matrix(beta.real)*np.matrix(np.diag(np.power(S,-0.5)).real)
+    Knk = K*t1; Lnk = L*t2
     H = Knk*np.linalg.inv(Lnk.T*Knk)*Lnk.T #Symmetrization matrix
     (S,beta) = sortedEig(G*H.T*G*H*G/(m**2),G,k,lambda0) #find generalized eigenvectors
     S,beta=S.real,np.matrix(beta.real)
-    Sroot = np.matrix(np.diag(np.power(S,-0.5))) 
+    Sroot = np.matrix(np.diag(np.power(S,-0.5)))
     term1 = G*beta*Sroot
     T = trilinear('I', H*term1,H.T*term1,term1)/m
-  (M,lambda0) = tentopy.eig(T,inner,outer) ; 
+  (M,lambda0) = tentopy.eig(T,inner,outer) ;
   M = np.matrix(M[:,:k])
   lambda0 = np.array(lambda0[:k]).flatten()
   A = beta*Sroot*M*np.diag(lambda0)
@@ -288,13 +288,13 @@ def sortedEig(X,M=None,k=None, lambda0=0):
   return b,U
 
 # <codecell>
-  
+
 def kernSpecSymm(K,L,k):
   """
   Kernel Spectral Algorithm (Algorithm 1 from Song et al. (2014)) for symmetric
   views.  For now, just use the asymmetric views algorithm, since this is just
   a special case of that algorithm.
-  Inputs: 
+  Inputs:
     *K, L: kernel matrices as defined in Sec 5.2 of Song et al. (2014)
     *k: desired rank of model
   Outputs:
@@ -303,7 +303,7 @@ def kernSpecSymm(K,L,k):
   """
   m = K.shape[1]/3
   (S, beta) = scipy.linalg.eig(K*L*K,K)
-  S = np.diag(S[:k])  
+  S = np.diag(S[:k])
   beta = beta[:,:k]
   qq = np.size(np.power(S,-0.5)*beta.T*K[:,1])
   term1 = np.power(S,-0.5)*beta.T
@@ -317,7 +317,7 @@ def kernSpecSymm(K,L,k):
   A = beta*np.power(S,-0.5)*M*np.diag(lambda0)
   pi = np.power(lambda0,-2).T
   return (A,pi)
-  
+
 # <codecell>
 
 def trilinear(T,W1,W2,W3):
@@ -347,7 +347,7 @@ def trilinear(T,W1,W2,W3):
     if T == 'I':
         for (i1,i2,i3,j) in itertools.product(N1,N2,N3,NT):
             X3[i1,i2,i3] += W1[j,i1] * W2[j,i2] * W3[j,i3]
-  else:  
+  else:
     for (i1,i2,i3,j1,j2,j3) in itertools.product(N1,N2,N3,NT,NT,NT):
       X3[i1,i2,i3] += T[j1,j2,j3] * W1[j1,i1] * W2[j2,i2] * W3[j3,i3]
   return X3
@@ -368,7 +368,7 @@ def fast_trilinear(T, W1, W2, W3):
   M1 = dim_stable_tpm(M, W1, 0)
   M12 = dim_stable_tpm(M1, W2, 1)
   M123 = dim_stable_tpm(M12, W3, 2)
-  
+
   return M123
 
 # <codecell>
@@ -400,14 +400,14 @@ def symmetricTensor(a,b,c):
   term2 = np.tensordot(np.tensordot(c,a,0),b,0)
   term3 = np.tensordot(np.tensordot(b,c,0),a,0)
   return term1+term2+term3
-  
+
 # <codecell>
 def phi_beta_shifted(x, N, n):
   '''
-    Input: 
+    Input:
         phi: feature map
         [0..N]: possible values x can take
-        n: dimensionality of feature map  
+        n: dimensionality of feature map
     Output:
        beta-distribution encoding of phi(x)
   '''
@@ -415,10 +415,10 @@ def phi_beta_shifted(x, N, n):
   #print N
   if len(np.shape(x))==0:
     i = int(x / (N+1));
-    k = int(x) % (N+1); 
+    k = int(x) % (N+1);
     if k > i:
       return np.zeros(n)
-    p = np.asarray(map(lambda t: beta_interval(t, k, i-k, n), unif_partition(n).tolist())); 
+    p = np.asarray(map(lambda t: beta_interval(t, k, i-k, n), unif_partition(n).tolist()));
     return p / sum(p);
 
   else:
@@ -437,23 +437,23 @@ def phi_beta_shifted(x, N, n):
 
 def phi_beta(x, N, n):
   '''
-      Input: 
+      Input:
           phi: feature map
           [0..N]: possible values x can take
-          n: dimensionality of feature map  
+          n: dimensionality of feature map
       Output:
           beta-distribution encoding of phi(x)
   '''
   #print x
   #print N
-    
+
   #p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** (N-x) ), unif_partition(n).tolist()));
   p = np.asarray(map(lambda t: beta_interval(t, x, N-x, n), unif_partition(n).tolist()));
   return p / sum(p);
 
-def beta_interval(t, k, l, n):    
+def beta_interval(t, k, l, n):
     return stats.beta.cdf(t+0.5/n, k+1, l+1) - stats.beta.cdf(t-0.5/n, k+1, l+1)
-    
+
 def unif_partition(n):
     return np.linspace(1.0/(2*n), 1.0 - 1.0/(2*n), n)
 
@@ -475,4 +475,3 @@ if __name__ == '__main__':
 
   print n == m
   '''
-  
