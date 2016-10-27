@@ -96,23 +96,41 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                             #print T_h_p
                             #print get_p(phi, N, n, O_h)
 
-def decoding_simulation(p, T, pi, p_h, T_h, pi_h):
-    l = 5000;
-    N = 20;
+def synthetic_test_data(p, T, pi, N, l_test):
 
     p_N = dg.generate_p_N(N)
     O = bh.get_O_stochastic_N(p_N, p);
-    x, h = dg.generate_seq(O, T, pi, l);
+    x, h = dg.generate_seq(O, T, pi, l_test);
+    browse_states(h)
 
+    return x, h;
+
+def decoding_simulation(x, p_h, T_h, pi_h, N):
+    l = len(x)
     coverage, methylated = zip(*map(lambda a: fm.to_c_m(a, N), x))
 
     p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage, methylated, i)
     h_dec_p = hi.posterior_decode(l, pi_h, T_h, p_x_h);
     h_dec_v = hi.viterbi_decode(l, pi_h, T_h, p_x_h);
 
-    print zip(h, h_dec_p, h_dec_v)
+    browse_states(h_dec_p)
+    browse_states(h_dec_v)
+    #print zip(h, h_dec_p, h_dec_v)
 
+def browse_states(h):
+    colors = ['r', 'g', 'b', 'c', 'm', 'y']
+    plt.figure()
+    i_total = max(h) + 1
+    l = len(h);
+    plt.hold(True)
+    #fig, axes = plt.subplots(i_total, 1)
+    for i in range(i_total):
+        plt.bar(xrange(l), [h[j] == i for j in xrange(l)], 1, color=colors[i], edgecolor='none')
 
+    plt.hold(False)
+    #for ax, i in zip(axes, xrange(l)):
+
+    plt.show()
 
 def synthetic_expt(phi, m, path_name):
 
@@ -121,13 +139,13 @@ def synthetic_expt(phi, m, path_name):
     except:
         os.mkdir(path_name)
 
-    sys.stdout = open(path_name+'/parameters.txt', 'w+');
+    #sys.stdout = open(path_name+'/parameters.txt', 'w+');
 
     n = 20
     N = 30
-    l = 50000
+    l = 500
     min_sigma_t = 0.7
-    min_sigma_o = 0.5
+    min_sigma_o = 0.9
     #n = 3;
     #m = 3;
 
@@ -155,6 +173,9 @@ def synthetic_expt(phi, m, path_name):
     print 'pi = '
     print pi
 
+    l_test = 500;
+    x_test, h_test = synthetic_test_data(p, T, pi, N, l_test);
+
     print 'Generating Data..'
     #x_zipped = dg.generate_longchain(T, O, pi, l)
     x_zipped = dg.generate_firstfew(T, O, pi, l)
@@ -168,7 +189,7 @@ def synthetic_expt(phi, m, path_name):
     print 'C = '
     print C
 
-    for m_hat in range(2,10,1):
+    for m_hat in range(2,4,1):
         print 'm_hat = '
         print m_hat
         C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m_hat)
@@ -191,7 +212,9 @@ def synthetic_expt(phi, m, path_name):
         fig.savefig( path_name + '/' + 'phi = ' + fm.phi_name(phi) + '_m = ' + str(m) +  '_l = ' + str(l) + '_m_hat = ' + str(m_hat) + '_n = ' + str(n) + '.pdf')   # save the figure to file
         plt.close(fig)
 
-        decoding_simulation(p, T, pi, p_h, T_h, pi_h)
+        decoding_simulation(x_test, p_h, T_h, pi_h, N)
+
+    raw_input()
 
 
 if __name__ == '__main__':
