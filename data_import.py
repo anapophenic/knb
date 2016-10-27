@@ -1,5 +1,6 @@
 import scipy.io
 import numpy as np
+import binom_hmm as bh
 from collections import Counter
 
 def group(coverage, methylated, s):
@@ -63,13 +64,14 @@ def seq_prep(filename, l=None, s=1, ctxt=range(16)):
 
   return coverage, methylated
 
+
 def triples_from_seq(coverage, methylated, formating):
   N = np.amax(coverage)
 
   print 'N = '
   print N
 
-  X0 = coverage * (N+1) + methylated
+  X0 = map(lambda c, m: bh.to_x(c, m, N), coverage, methylated)
 
   l = len(coverage)
   # compute E[1/(n+2)]

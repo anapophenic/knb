@@ -96,11 +96,21 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                             #print T_h_p
                             #print get_p(phi, N, n, O_h)
 
-def decoding_simulation(p, T, pi, p_h, T_h, pi_h)
+def decoding_simulation(p, T, pi, p_h, T_h, pi_h):
     l = 5000;
     N = 20;
-    x, h = generate_seq(T, O, pi, l)
 
+    p_N = dg.generate_p_N(N)
+    O = bh.get_O_stochastic_N(p_N, p);
+    x, h = dg.generate_seq(O, T, pi, l);
+
+    coverage, methylated = zip(*map(lambda a: fm.to_c_m(a, N), x))
+
+    p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage, methylated, i)
+    h_dec_p = hi.posterior_decode(l, pi_h, T_h, p_x_h);
+    h_dec_v = hi.viterbi_decode(l, pi_h, T_h, p_x_h);
+
+    print zip(h, h_dec_p, h_dec_v)
 
 
 
@@ -132,7 +142,7 @@ def synthetic_expt(phi, m, path_name):
 
     #O = get_O_binom(m, N, p);
     #O = get_O(m, N, min_sigma_o);
-    O = bh.get_O_stochastic_N(m, p_N, p);
+    O = bh.get_O_stochastic_N(p_N, p);
     #O = dg.generate_O(m, n, min_sigma_o);
     print 'O = '
     print O
@@ -180,6 +190,8 @@ def synthetic_expt(phi, m, path_name):
         plt.plot(bh.unif_partition(n), C_h)
         fig.savefig( path_name + '/' + 'phi = ' + fm.phi_name(phi) + '_m = ' + str(m) +  '_l = ' + str(l) + '_m_hat = ' + str(m_hat) + '_n = ' + str(n) + '.pdf')   # save the figure to file
         plt.close(fig)
+
+        decoding_simulation(p, T, pi, p_h, T_h, pi_h)
 
 
 if __name__ == '__main__':

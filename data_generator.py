@@ -42,20 +42,20 @@ def weighted_values(values, probabilities, size):
     bins = np.add.accumulate(probabilities)
     return values[np.digitize(np.random.random_sample(size), bins)]
 
-def generate_seq_p(p, N, T, pi, l):
-    m = np.shape(T)[0];
-    O = get_O_stochastic_N(m, np.ones(N+1)/(N+1), p);
-    return generate_seq(O, T, pi, l)
+#def generate_seq_p(p, N, T, pi, l):
+#    m = np.shape(T)[0];
+#    O = get_O_stochastic_N(m, np.ones(N+1)/(N+1), p);
+#    return generate_seq(O, T, pi, l)
 
-def generate_firstfew_p(p, N, T, pi, l):
-    m = np.shape(T)[0];
-    O = get_O_stochastic_N(m, np.ones(N+1)/(N+1), p);
-    return generate_firstfew_p(O, T, pi, l)
+#def generate_firstfew_p(p, N, T, pi, l):
+#    m = np.shape(T)[0];
+#    O = get_O_stochastic_N(m, np.ones(N+1)/(N+1), p);
+#    return generate_firstfew_p(O, T, pi, l)
 
-def generate_longchain_p(p, N, T, pi, l):
-    m = np.shape(T)[0];
-    O = get_O_stochastic_N(m, np.ones(N+1)/(N+1), p);
-    return generate_longchain(O, T, pi, l)
+#def generate_longchain_p(p, N, T, pi, l):
+#    m = np.shape(T)[0];
+#    O = get_O_stochastic_N(m, np.ones(N+1)/(N+1), p);
+#    return generate_longchain(O, T, pi, l)
 
 def generate_seq(O, T, pi, l):
 

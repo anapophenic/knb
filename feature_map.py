@@ -34,6 +34,14 @@ def phi_binning_cached(*args):
 def phi_binning_igz_cached(*args):
     return cache_results(phi_binning_igz)(*args)
 
+def to_x(c, m, N):
+    x = c * (N+1) + m
+
+def to_c_m(x, N):
+    c = int(x / (N+1))
+    m = int(x) % (N+1)
+    return c, m
+
 # dealing with (0,0) observation is a bit tricky. Here we create a new dimension for these obs.
 
 def phi_binning(x, N, n):

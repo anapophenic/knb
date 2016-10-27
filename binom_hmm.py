@@ -48,7 +48,8 @@ def get_O_binom(m, N, p):
     return O
 
 
-def get_O_stochastic_N(m, p_N, p):
+def get_O_stochastic_N(p_N, p):
+    m = np.shape(p)[0]
     N = np.shape(p_N)[0] - 1
     O = np.zeros(((N+1)*(N+1), m))
 
