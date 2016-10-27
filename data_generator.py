@@ -22,7 +22,7 @@ def generate_T(m, min_sigma_t):
 
     T = min_sigma_t * np.eye(m) + (1 - min_sigma_t) * np.random.random((m, m))
 
-    return bh.col_normalize(T)
+    return bh.normalize_m(T)
 
 def generate_pi(m):
     #pi = dataGenerator.makeDistribution(m)
@@ -36,7 +36,7 @@ def generate_O(m, n, min_sigma_o):
 
     O = min_sigma_o * np.eye(n,m) + (1 - min_sigma_o) * np.random.random((n, m))
 
-    return bh.col_normalize(O)
+    return bh.normalize_m(O)
 
 def weighted_values(values, probabilities, size):
     bins = np.add.accumulate(probabilities)

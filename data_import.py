@@ -71,7 +71,7 @@ def triples_from_seq(coverage, methylated, formating):
   print 'N = '
   print N
 
-  X0 = map(lambda c, m: bh.to_x(c, m, N), coverage, methylated)
+  x = map(lambda c, m: bh.to_x(c, m, N), coverage, methylated)
 
   l = len(coverage)
   # compute E[1/(n+2)]
@@ -82,10 +82,10 @@ def triples_from_seq(coverage, methylated, formating):
   #  X0[i] = coverage[i]*(N+1) + methylated[i]
 
   if formating=='explicit':
-    X_zipped = zip(X0[0:l-2], X0[1:l-1], X0[2:l])
-    return N, X_zipped, a
+    x_zipped = zip(x[0:l], x[1:l+1], x[2:l+2])
+    return N, x_zipped, a
   else:
-    X = np.vstack((X0[0:l-2],X0[1:l-1],X0[2:l])).T
+    X = np.vstack((x[0:l], x[1:l+1], x[2:l+2])).T
     return N, X, a
 
 

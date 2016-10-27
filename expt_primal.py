@@ -16,7 +16,7 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
     except:
         os.mkdir(path_name)
 
-    sys.stdout = open(path_name+'/parameters.txt', 'w+');
+    #sys.stdout = open(path_name+'/parameters.txt', 'w+');
 
     for ch in chrs:
         print 'ch = '
@@ -31,6 +31,11 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                 filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
                 N, x_zipped, a = di.data_prep(filename,'explicit', None, s, ctxt);
 
+                #print x_zipped
+
+                l_test = 10000
+                coverage_test, methylated_test = di.seq_prep(filename, l_test, s, ctxt);
+
                 #for l in [10000, 20000, 40000, 80000, 160000, 320000]:
                 for l in lengths:
                     print 'l = '
@@ -41,16 +46,16 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                     print a
 
                     x_importance_weighted = di.importance_weightify(x_zipped, l)
-                    print l
+                    #print x_importance_weighted
 
                     #X = X[:10000,:]
 
                     for phi in phis:
                         print 'phi = '
-                        print phi_name(phi)
+                        print fm.phi_name(phi)
 
                         print 'Constructing Moments..'
-                        P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
+                        P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
 
                         #print 'C = '
                         #print C
@@ -75,26 +80,54 @@ def real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name):
                             print 'p_h = '
                             print p_h
 
-                            fig = plt.figure(1)
-                            ax = fig.add_subplot(1,1,1)
-                            ax.set_title(r'Expected Feature Map given Hidden States')
-
-                            ax.set_xlabel(r'$t$')
-                            ax.set_ylabel(r'$\mathbb{E}[\phi(x,t)|h]$')
-
-                            plt.plot(bh.unif_partition(n), C_h, linewidth=3)
-
-                            fig.savefig(path_name + '/' + 'cell = ' + ce + '_chr = ' + ch + '_l = ' + str(l) + '_s = ' + str(s) + '_m = ' + str(m) + '_n = ' + str(n) + '_phi = ' + fm.phi_name(phi) + '_ctxt = ' + ctxt_name(ctxt) + '.pdf')
-                            # save the figure to file
-                            plt.close(fig)
-                            #print 'Refining using Binomial Knowledge'
-
                             #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
                             #print 'C_h_p = '
                             #print C_h_p
                             #print 'T_h_p = '
                             #print T_h_p
                             #print get_p(phi, N, n, O_h)
+
+                            p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage_test, methylated_test, i)
+                            print 'posterior decoding...'
+                            h_dec_p = hi.posterior_decode(l_test, pi_h, T_h, p_x_h);
+                            color_scheme = get_color_scheme(h_dec_p)
+
+                            browse_states(h_dec_p, 'm = ' + str(m) + 'l_test = ' + str(l_test) + '_posterior.pdf', color_scheme)
+                            print 'viterbi decoding...'
+                            h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
+                            browse_states(h_dec_v, 'm = ' + str(m) + 'l_test = ' + str(l_test) + '_viterbi.pdf', color_scheme)
+                            print 'generating feature map graph...'
+                            print_feature_map(C_h, ce, ch, l, s, m, n, phi, ctxt, color_scheme)
+
+def print_feature_map(C_h, ce, ch, l, s, m, n, phi, ctxt, color_scheme):
+    fig = plt.figure(1)
+    plt.hold(True)
+    ax = fig.add_subplot(1,1,1)
+    ax.set_title(r'Expected Feature Map given Hidden States')
+
+    ax.set_xlabel(r'$t$')
+    ax.set_ylabel(r'$\mathbb{E}[\phi(x,t)|h]$')
+
+    for i in range(m):
+        plt.plot(bh.unif_partition(n), C_h[:,i], color=color_scheme[i], linewidth=3)
+
+    fig.savefig(path_name + '/' + 'cell = ' + ce + '_chr = ' + ch + '_l = ' + str(l) + '_s = ' + str(s) + '_m = ' + str(m) + '_n = ' + str(n) + '_phi = ' + fm.phi_name(phi) + '_ctxt = ' + bh.ctxt_name(ctxt) + '.pdf')
+    # save the figure to file
+    plt.hold(False)
+    plt.close(fig)
+    #print 'Refining using Binomial Knowledge'
+
+def get_color_scheme(h):
+    h = h.tolist()
+    i_total = max(h) + 1
+    colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
+    freq = [(i, h.count(i)) for i in xrange(i_total)]
+    sorted_freq = sorted(freq, key=lambda x: x[1], reverse=True)
+    color_scheme = {};
+    for i in xrange(i_total):
+        color_scheme[sorted_freq[i][0]] = colors[i]
+
+    return color_scheme
 
 def synthetic_test_data(p, T, pi, N, l_test):
 
@@ -107,7 +140,7 @@ def synthetic_test_data(p, T, pi, N, l_test):
 
 def decoding_simulation(x, p_h, T_h, pi_h, N):
     l = len(x)
-    coverage, methylated = zip(*map(lambda a: fm.to_c_m(a, N), x))
+    coverage, methylated = zip(*map(lambda a: bh.to_c_m(a, N), x))
 
     p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage, methylated, i)
     h_dec_p = hi.posterior_decode(l, pi_h, T_h, p_x_h);
@@ -117,20 +150,20 @@ def decoding_simulation(x, p_h, T_h, pi_h, N):
     browse_states(h_dec_v)
     #print zip(h, h_dec_p, h_dec_v)
 
-def browse_states(h):
-    colors = ['r', 'g', 'b', 'c', 'm', 'y']
-    plt.figure()
+def browse_states(h, h_name, color_scheme):
+    fig = plt.figure(1)
     i_total = max(h) + 1
     l = len(h);
+
     plt.hold(True)
     #fig, axes = plt.subplots(i_total, 1)
     for i in range(i_total):
-        plt.bar(xrange(l), [h[j] == i for j in xrange(l)], 1, color=colors[i], edgecolor='none')
+        plt.bar(xrange(l), [h[j] == i for j in xrange(l)], 1, color=color_scheme[i], edgecolor='none')
 
     plt.hold(False)
+    fig.savefig(path_name + '/' + h_name)
     #for ax, i in zip(axes, xrange(l)):
-
-    plt.show()
+    plt.close(fig)
 
 def synthetic_expt(phi, m, path_name):
 
@@ -189,7 +222,7 @@ def synthetic_expt(phi, m, path_name):
     print 'C = '
     print C
 
-    for m_hat in range(2,4,1):
+    for m_hat in range(3,6,1):
         print 'm_hat = '
         print m_hat
         C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m_hat)
@@ -213,8 +246,6 @@ def synthetic_expt(phi, m, path_name):
         plt.close(fig)
 
         decoding_simulation(x_test, p_h, T_h, pi_h, N)
-
-    raw_input()
 
 
 if __name__ == '__main__':
@@ -254,32 +285,35 @@ if __name__ == '__main__':
     #    for m in range(2,10,1):
     #        synthetic_expt(phi, m)
 
-    path_name = 'synthetic/1026'
-    synthetic_expt(fm.phi_beta_shifted_cached, 3, path_name);
+    #path_name = 'synthetic/1026'
+    #synthetic_expt(fm.phi_beta_shifted_cached, 3, path_name);
 
-    '''
+
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
     #chrs.append('Y')
     chrs = ['1']
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
-    cells = ['E2', 'E1', 'E']
+    #cells = ['E2', 'E1', 'E']
+    cells = ['E']
     n = 50
-    ms = range(1, 9)
+    ms = range(2, 7)
     ctxt = range(12, 16)
-    '''
+
 
     '''
     Expt 1: Compare Binning Feature vs. Beta Feature
 
     '''
-    '''
+
     path_name = 'cg'
-    segments = range(1, 6)
-    lengths = [320000]
-    phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
+    #segments = range(1, 6)
+    segments = [1]
+    lengths = [3200]
+    #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
+    phis = [fm.phi_beta_shifted_cached]
     real_expt(phis, chrs, cells, segments, lengths, n, ms, ctxt, path_name)
-    '''
+
 
     '''
     Expt 2: Vary the number of Segments

@@ -164,13 +164,21 @@ def estimate(P_21, P_31, P_23, P_13, P_123, m):
     Lambda, U_T_O = tentopy.reconstruct(W, X_3);
 
     O_h = np.dot(U, U_T_O.T)
-    O_h = bh.col_normalize_post(O_h)
+    print 'raw O_h = '
+    print O_h
+
+    O_h = bh.postprocess_m(O_h)
 
     T_h = np.linalg.pinv(O_h).dot(P_21.dot(np.linalg.pinv(O_h.T)))
-    pi_h = np.sum(T_h, axis = 0);
+    print 'raw T_h = '
+    print T_h
 
-    pi_h = bh.normalize_post(pi_h)
-    T_h = bh.col_normalize_post(T_h)
+    pi_h = np.sum(T_h, axis = 0);
+    print 'raw pi_h = '
+    print pi_h
+
+    pi_h = bh.postprocess_v(pi_h)
+    T_h = bh.postprocess_m(T_h)
 
     return O_h, T_h, pi_h
 
@@ -179,6 +187,6 @@ def estimate_refine(C_h, P_21, phi, N, n, m, a):
     O_h = fm.get_O(phi, N, n, C_h, a)
     C_h_p = fm.gt_obs(phi, N, n, O_h)
     T_h_p = np.linalg.pinv(C_h_p).dot(P_21.dot(np.linalg.pinv(C_h_p.T)))
-    T_h_p = bh.col_normalize_post(T_h_p)
+    T_h_p = bh.postprocess_m(T_h_p)
 
     return C_h_p, T_h_p

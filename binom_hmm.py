@@ -4,11 +4,8 @@ from scipy import stats
 def unif_partition(n):
     return np.linspace(1.0/(2*n), 1.0 - 1.0/(2*n), n)
 
-def col_normalize(M):
-    return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
-
 #Need some sort of smoothing on the estimated probabilities
-def col_normalize_post(M):
+def postprocess_m(M):
     # first, determine the sign of the observations
 
     s = np.diag(np.sign(np.sum(M, axis=0)))
@@ -18,24 +15,50 @@ def col_normalize_post(M):
     M = M * (M > 0)
 
     # then normalize all the entries
-    return col_normalize(M);
+    M = normalize_m(M);
+    M = make_positive_m(M);
+    M = normalize_m(M);
 
-def normalize_post(p):
+    return M
+
+def postprocess_v(p):
     s = np.sign(np.sum(p))
     p = p * s;
     p = p * (p > 0)
 
-    return p / np.sum(p)
+    #normalize
+    p = normalize_v(p);
+    p = make_positive_v(p);
+    p = normalize_v(p);
+
+    return p
 
 def proj_zeroone(p):
     m = np.shape(p)[0];
     for i in range(m):
-        if p[i] > 1:
-            p[i] = 1
-        elif p[i] < 0:
-            p[i] = 0
+        if p[i] > 0.99:
+            p[i] = 0.99
+        elif p[i] < 0.01:
+            p[i] = 0.01
 
     return p
+
+def normalize_m(M):
+    return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
+
+def normalize_v(p):
+    return p / np.sum(p)
+
+#make the entries bounded away from zero
+def make_positive_v(p):
+    m = np.shape(p)[0];
+    p = p + 0.01 * np.ones(m)
+    return p
+
+def make_positive_m(M):
+    n, m = np.shape(M);
+    M = M + 0.01 * np.ones((n, m))
+    return M
 
 def get_O_binom(m, N, p):
     O = np.zeros((N+1, m));
@@ -92,3 +115,12 @@ def p_x_h_binom(p_h, coverage, methylated, i):
 #on the position of the observation
 def p_x_h_O(O, x, i):
     return O[x[i],:]
+
+def to_x(c, m, N):
+    x = c * (N+1) + m
+    return x
+
+def to_c_m(x, N):
+    c = int(x / (N+1))
+    m = int(x) % (N+1)
+    return c, m
