@@ -96,10 +96,6 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt, p
                                 print 'posterior decoding...'
                                 h_dec_p = hi.posterior_decode(l_test, pi_h, T_h, p_x_h);
                                 color_scheme = get_color_scheme(h_dec_p)
-                                feature_map_title = fig_title + '_feature_map.pdf'
-                                print_feature_map(C_h, color_scheme, feature_map_title)
-
-                                '''
                                 posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
                                 browse_states(h_dec_p, posterior_title, color_scheme)
 
@@ -109,6 +105,8 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt, p
                                 browse_states(h_dec_v, viterbi_title, color_scheme)
 
                                 print 'generating feature map graph...'
+                                feature_map_title = fig_title + '_feature_map.pdf'
+                                print_feature_map(C_h, color_scheme, feature_map_title)
 
                                 '''
                                 print 'printing matrices'
@@ -125,6 +123,9 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt, p
 
                                 pi_title = fig_title + 'pi_h.pdf'
                                 print_v(pi_h, pi_title)
+                                '''
+
+                            raw_input()
 
 def print_v(p, vec_title):
     print_m(np.array([p.tolist()]), vec_title)
@@ -358,8 +359,8 @@ if __name__ == '__main__':
     path_name = 'cg'
     #segments = range(1, 6)
     segments = [1]
-    lengths = [320]
-    lengths_test = [300]
+    lengths = [320000]
+    lengths_test = [100000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     phis = [fm.phi_beta_shifted_cached]
     real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt, path_name)
