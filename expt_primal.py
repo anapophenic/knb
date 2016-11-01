@@ -5,18 +5,20 @@ import feature_map as fm
 import numpy as np
 import data_import as di
 import matplotlib.pyplot as plt
+import matplotlib.collections as collections
 import hmm_inference as hi
+import baum_welch as bw
 import os
 import sys
 
-def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt, path_name):
+def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, bw_iters, path_name):
 
     try:
         os.stat(path_name)
     except:
         os.mkdir(path_name)
 
-    #sys.stdout = open(path_name+'/parameters.txt', 'w+');
+    sys.stdout = open(path_name+'/parameters.txt', 'w+');
 
     for ch in chrs:
         print 'ch = '
@@ -25,107 +27,123 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt, p
             print 'ce = '
             print ce
             for s in segments:
-                print 's = '
-                print s
-                print 'Reading Data..'
-                filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
-                N, x_zipped, a = di.data_prep(filename,'explicit', None, s, ctxt);
-                #print x_zipped
+                for ctxt in ctxts:
+                    print 's = '
+                    print s
+                    print 'ctxt = '
+                    print ctxt
+                    print 'Reading Data..'
+                    filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
+                    N, x_zipped, a, coverage, methylated = di.data_prep(filename,'explicit', None, s, ctxt);
 
-                #for l in [10000, 20000, 40000, 80000, 160000, 320000]:
-                for l in lengths:
-                    for l_test in lengths_test:
-                        coverage_test, methylated_test = di.seq_prep(filename, l_test, s, ctxt);
-                        print 'l = '
-                        print l
-                        print 'N = '
-                        print N
-                        print 'a = '
-                        print a
-                        print 'l_test = '
-                        print l_test
+                    #print x_zipped
 
-                        x_importance_weighted = di.importance_weightify(x_zipped, l)
-                        #print x_importance_weighted
+                    #for l in [10000, 20000, 40000, 80000, 160000, 320000]:
+                    for l in lengths:
+                        for l_test in lengths_test:
+                            coverage_test, methylated_test = di.seq_prep(filename, l_test, s, ctxt);
+                            if l_test == None:
+                                l_test = len(coverage_test)
+                                print l_test
 
-                        #X = X[:10000,:]
+                            print 'l = '
+                            print l
+                            print 'N = '
+                            print N
+                            print 'a = '
+                            print a
+                            print 'l_test = '
+                            print l_test
 
-                        for phi in phis:
-                            print 'phi = '
-                            print fm.phi_name(phi)
+                            # prepare for training data
+                            coverage_train = coverage[:l]
+                            methylated_train = methylated[:l]
+                            x_importance_weighted = di.importance_weightify(x_zipped, l)
+                            #print x_importance_weighted
 
-                            print 'Constructing Moments..'
-                            P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
+                            #X = X[:10000,:]
 
-                            #print 'C = '
-                            #print C
+                            for phi in phis:
+                                print 'phi = '
+                                print fm.phi_name(phi)
 
-                            #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
-                            #save the moments in a file
+                                print 'Constructing Moments..'
+                                P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
 
-                            print 'Estimating..'
+                                #print 'C = '
+                                #print C
 
-                            for m in ms:
-                                print 'm = '
-                                print m
-                                C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
-                                #C_h, T_h, pi_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
-                                print 'C_h = '
-                                print C_h
+                                #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
+                                #save the moments in a file
 
-                                print 'T_h = '
-                                print T_h
+                                print 'Estimating..'
 
-                                print 'pi_h = '
-                                print pi_h
+                                for m in ms:
+                                    print 'm = '
+                                    print m
+                                    C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
+                                    #C_h, T_h, pi_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
+                                    print 'C_h = '
+                                    print C_h
 
-                                p_h = fm.get_p(phi, N, n, C_h, a)
-                                print 'p_h = '
-                                print p_h
+                                    print 'T_h = '
+                                    print T_h
 
-                                #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
-                                #print 'C_h_p = '
-                                #print C_h_p
-                                #print 'T_h_p = '
-                                #print T_h_p
-                                #print get_p(phi, N, n, O_h)
-                                fig_title = get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt)
+                                    print 'pi_h = '
+                                    print pi_h
+
+                                    p_h = fm.get_p(phi, N, n, C_h, a)
+                                    print 'p_h = '
+                                    print p_h
+
+                                    print 'coverage_train = '
+                                    print len(coverage_train)
+
+                                    p_h, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_h, T_h, pi_h, bw_iters)
+
+                                    #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
+                                    #print 'C_h_p = '
+                                    #print C_h_p
+                                    #print 'T_h_p = '
+                                    #print T_h_p
+                                    #print get_p(phi, N, n, O_h)
+                                    fig_title = get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt)
 
 
-                                p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage_test, methylated_test, i)
-                                print 'posterior decoding...'
-                                h_dec_p = hi.posterior_decode(l_test, pi_h, T_h, p_x_h);
-                                color_scheme = get_color_scheme(h_dec_p)
-                                posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
-                                browse_states(h_dec_p, posterior_title, color_scheme)
+                                    p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage_test, methylated_test, i)
+                                    print 'posterior decoding...'
+                                    h_dec_p = hi.posterior_decode(l_test, pi_h, T_h, p_x_h);
+                                    color_scheme = get_color_scheme(h_dec_p, m)
+                                    posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
+                                    browse_states(h_dec_p, posterior_title, color_scheme)
 
-                                print 'viterbi decoding...'
-                                h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
-                                viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
-                                browse_states(h_dec_v, viterbi_title, color_scheme)
+                                    #print 'viterbi decoding...'
+                                    #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
+                                    #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
+                                    #browse_states(h_dec_v, viterbi_title, color_scheme)
 
-                                print 'generating feature map graph...'
-                                feature_map_title = fig_title + '_feature_map.pdf'
-                                print_feature_map(C_h, color_scheme, feature_map_title)
+                                    print 'generating feature map graph...'
+                                    feature_map_title = fig_title + '_feature_map.pdf'
+                                    print_feature_map(C_h, color_scheme, feature_map_title)
 
-                                '''
-                                print 'printing matrices'
-                                T_title = fig_title + 'T_h.pdf'
-                                print T_h
-                                print_m(T_h, T_title)
 
-                                C_title = fig_title + 'C_h.pdf'
-                                print C_h
-                                print_m(C_h, C_title)
+                                    #print 'printing matrices'
+                                    print T_h
+                                    #T_title = fig_title + 'T_h.pdf'
+                                    #print_m(T_h, T_title)
 
-                                p_title = fig_title + 'p_h.pdf'
-                                print_v(p_h, p_title)
+                                    print C_h
+                                    #C_title = fig_title + 'C_h.pdf'
+                                    #print_m(C_h, C_title)
 
-                                pi_title = fig_title + 'pi_h.pdf'
-                                print_v(pi_h, pi_title)
-                                '''
+                                    print p_h
+                                    #p_title = fig_title + 'p_h.pdf'
+                                    #print_v(p_h, p_title)
 
-                            raw_input()
+                                    print pi_h
+                                    #pi_title = fig_title + 'pi_h.pdf'
+                                    #print_v(pi_h, pi_title)
+
 
 def print_v(p, vec_title):
     print_m(np.array([p.tolist()]), vec_title)
@@ -158,7 +176,11 @@ def print_feature_map(C_h, color_scheme, feature_map_title):
     ax.set_xlabel(r'$t$')
     ax.set_ylabel(r'$\mathbb{E}[\phi(x,t)|h]$')
 
+    #print color_scheme
+
     for i in range(m):
+        print i
+        print C_h[:,i]
         plt.plot(bh.unif_partition(n), C_h[:,i], color=color_scheme[i], linewidth=3)
 
     fig.savefig(feature_map_title)
@@ -167,14 +189,13 @@ def print_feature_map(C_h, color_scheme, feature_map_title):
     plt.close(fig)
     #print 'Refining using Binomial Knowledge'
 
-def get_color_scheme(h):
+def get_color_scheme(h, m):
     h = h.tolist()
-    i_total = max(h) + 1
     colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
-    freq = [(i, h.count(i)) for i in xrange(i_total)]
+    freq = [(i, h.count(i)) for i in xrange(m)]
     sorted_freq = sorted(freq, key=lambda x: x[1], reverse=True)
     color_scheme = {};
-    for i in xrange(i_total):
+    for i in xrange(m):
         color_scheme[sorted_freq[i][0]] = colors[i]
 
     return color_scheme
@@ -201,15 +222,18 @@ def decoding_simulation(x, p_h, T_h, pi_h, N):
     #print zip(h, h_dec_p, h_dec_v)
 
 def browse_states(h, h_name, color_scheme):
-    fig = plt.figure(1)
-    i_total = max(h) + 1
+    #fig = plt.figure(1)
     l = len(h);
+    m = max(color_scheme.keys()) + 1
 
     plt.hold(True)
-    #fig, axes = plt.subplots(i_total, 1)
-    for i in range(i_total):
-        plt.bar(xrange(l), [h[j] == i for j in xrange(l)], 1, color=color_scheme[i], edgecolor='none')
+    fig, ax = plt.subplots(1, 1)
+    for i in range(m):
+        #plt.bar(xrange(l), [h[j] == i for j in xrange(l)], 1, color=color_scheme[i], edgecolor='none')
+        collection = collections.BrokenBarHCollection.span_where(range(l), ymin=0, ymax=1, where=[h[j] == i for j in xrange(l)], facecolor=color_scheme[i], alpha=0.5, edgecolor='none')
+        ax.add_collection(collection)
 
+    plt.axis([0, l, 0, 1])
     plt.hold(False)
     fig.savefig(h_name)
     #for ax, i in zip(axes, xrange(l)):
@@ -342,13 +366,13 @@ if __name__ == '__main__':
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
     #chrs.append('Y')
-    chrs = ['1']
+    chrs = ['1', '2']
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
-    #cells = ['E2', 'E1', 'E']
-    cells = ['E']
+    cells = ['E2', 'E1', 'E']
+    #cells = ['E']
     n = 50
     ms = range(2, 7)
-    ctxt = range(12, 16)
+    ctxts = [range(0,4), range(4,8), range(8,12), range(12, 16), range(0,16)]
 
 
     '''
@@ -356,14 +380,14 @@ if __name__ == '__main__':
 
     '''
 
-    path_name = 'cg'
+    path_name = 'all_ctxts'
     #segments = range(1, 6)
     segments = [1]
-    lengths = [320000]
+    lengths = [40000]
     lengths_test = [100000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     phis = [fm.phi_beta_shifted_cached]
-    real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt, path_name)
+    real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 0, path_name)
 
 
     '''

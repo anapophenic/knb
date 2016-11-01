@@ -16,6 +16,10 @@ def forward_var(l, pi, T, p_x_h):
             alpha[:,i] = np.diag(p_x_h(i)).dot(T.dot(alpha[:,i-1]))
         #normalize
         alpha[:,i] = alpha[:,i] / np.sum(alpha[:,i])
+        if alpha[1,i] == np.nan:
+            break
+        print 'alpha[:,i] = '
+        print alpha[:,i]
 
     return alpha
 

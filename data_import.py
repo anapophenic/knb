@@ -98,7 +98,7 @@ def data_prep(filename, formating='explicit', l=None, s=1, ctxt=range(16)):
       or for kernel feature map
    l: maximum length of data to sample; if None, the whole set is sampled
    s: number of methylations / coverages to merge
-  Otputs:
+  Outputs:
    N: number of maximum number of coverage
    X_importance_weighted: a dictionary of
     key: triples (x_1, x_2, x_3)
@@ -107,7 +107,7 @@ def data_prep(filename, formating='explicit', l=None, s=1, ctxt=range(16)):
   """
 
   coverage, methylated = seq_prep(filename, l, s, ctxt);
-  return triples_from_seq(coverage, methylated, formating);
+  return triples_from_seq(coverage, methylated, formating) + (coverage, methylated)
 
 
 
