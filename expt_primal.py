@@ -5,9 +5,9 @@ import feature_map as fm
 import numpy as np
 import data_import as di
 import matplotlib.pyplot as plt
-import matplotlib.collections as collections
 import hmm_inference as hi
 import baum_welch as bw
+import visualize as vis
 import os
 import sys
 
@@ -107,15 +107,15 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 
                                     #print 'T_h_p = '
                                     #print T_h_p
                                     #print get_p(phi, N, n, O_h)
-                                    fig_title = get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt)
+                                    fig_title = vis.get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt)
 
 
                                     p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage_test, methylated_test, i)
                                     print 'posterior decoding...'
                                     h_dec_p = hi.posterior_decode(l_test, pi_h, T_h, p_x_h);
-                                    color_scheme = get_color_scheme(h_dec_p, m)
+                                    color_scheme = vis.get_color_scheme(h_dec_p, m)
                                     posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
-                                    browse_states(h_dec_p, posterior_title, color_scheme)
+                                    vis.browse_states(h_dec_p, posterior_title, color_scheme)
 
                                     #print 'viterbi decoding...'
                                     #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
@@ -124,81 +124,25 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 
 
                                     print 'generating feature map graph...'
                                     feature_map_title = fig_title + '_feature_map.pdf'
-                                    print_feature_map(C_h, color_scheme, feature_map_title)
+                                    vis.print_feature_map(C_h, color_scheme, feature_map_title)
 
 
                                     #print 'printing matrices'
                                     print T_h
                                     #T_title = fig_title + 'T_h.pdf'
-                                    #print_m(T_h, T_title)
+                                    #vis.print_m(T_h, T_title)
 
                                     print C_h
                                     #C_title = fig_title + 'C_h.pdf'
-                                    #print_m(C_h, C_title)
+                                    #vis.print_m(C_h, C_title)
 
                                     print p_h
                                     #p_title = fig_title + 'p_h.pdf'
-                                    #print_v(p_h, p_title)
+                                    #vis.print_v(p_h, p_title)
 
                                     print pi_h
                                     #pi_title = fig_title + 'pi_h.pdf'
-                                    #print_v(pi_h, pi_title)
-
-
-def print_v(p, vec_title):
-    print_m(np.array([p.tolist()]), vec_title)
-
-def print_m(M, mat_title):
-    #M = np.random.random((10,10))
-    fig = plt.figure(1)
-    plt.matshow(M, interpolation='nearest', cmap=plt.cm.Spectral)
-    fig.savefig(mat_title)
-    plt.show(block=False)
-    plt.close(fig)
-
-
-def get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt):
-    return path_name + '/' + 'cell = ' + ce + \
-           '_chr = ' + ch + '_l = ' + str(l) + \
-           '_s = ' + str(s) + '_m = ' + str(m) + \
-           '_n = ' + str(n) + '_phi = ' + fm.phi_name(phi) + \
-           '_ctxt = ' + bh.ctxt_name(ctxt)
-
-
-def print_feature_map(C_h, color_scheme, feature_map_title):
-    m = np.shape(C_h)[1]
-
-    fig = plt.figure(1)
-    plt.hold(True)
-    ax = fig.add_subplot(1,1,1)
-    ax.set_title(r'Expected Feature Map given Hidden States')
-
-    ax.set_xlabel(r'$t$')
-    ax.set_ylabel(r'$\mathbb{E}[\phi(x,t)|h]$')
-
-    #print color_scheme
-
-    for i in range(m):
-        print i
-        print C_h[:,i]
-        plt.plot(bh.unif_partition(n), C_h[:,i], color=color_scheme[i], linewidth=3)
-
-    fig.savefig(feature_map_title)
-    # save the figure to file
-    plt.hold(False)
-    plt.close(fig)
-    #print 'Refining using Binomial Knowledge'
-
-def get_color_scheme(h, m):
-    h = h.tolist()
-    colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
-    freq = [(i, h.count(i)) for i in xrange(m)]
-    sorted_freq = sorted(freq, key=lambda x: x[1], reverse=True)
-    color_scheme = {};
-    for i in xrange(m):
-        color_scheme[sorted_freq[i][0]] = colors[i]
-
-    return color_scheme
+                                    #vis.print_v(pi_h, pi_title)
 
 def synthetic_test_data(p, T, pi, N, l_test):
 
@@ -221,23 +165,6 @@ def decoding_simulation(x, p_h, T_h, pi_h, N):
     browse_states(h_dec_v)
     #print zip(h, h_dec_p, h_dec_v)
 
-def browse_states(h, h_name, color_scheme):
-    #fig = plt.figure(1)
-    l = len(h);
-    m = max(color_scheme.keys()) + 1
-
-    plt.hold(True)
-    fig, ax = plt.subplots(1, 1)
-    for i in range(m):
-        #plt.bar(xrange(l), [h[j] == i for j in xrange(l)], 1, color=color_scheme[i], edgecolor='none')
-        collection = collections.BrokenBarHCollection.span_where(range(l), ymin=0, ymax=1, where=[h[j] == i for j in xrange(l)], facecolor=color_scheme[i], alpha=0.5, edgecolor='none')
-        ax.add_collection(collection)
-
-    plt.axis([0, l, 0, 1])
-    plt.hold(False)
-    fig.savefig(h_name)
-    #for ax, i in zip(axes, xrange(l)):
-    plt.close(fig)
 
 def synthetic_expt(phi, m, path_name):
 
@@ -383,7 +310,7 @@ if __name__ == '__main__':
     path_name = 'all_ctxts'
     #segments = range(1, 6)
     segments = [1]
-    lengths = [40000]
+    lengths = [320000]
     lengths_test = [100000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     phis = [fm.phi_beta_shifted_cached]
