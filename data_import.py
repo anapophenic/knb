@@ -50,19 +50,30 @@ def select_subseq(coverage, methylated, l, ctxt):
 
     return coverage, methylated
 
-def seq_prep(filename, l=None, s=1, ctxt=range(16)):
-  (coverage, methylated) = load_from_file(filename);
+def seq_prep(filename, l=None, s=1, ctxts=[range(16)]):
+    (coverage, methylated) = load_from_file(filename);
+    if l is None:
+        l = len(coverage)
 
-  if l is None:
-      l = len(coverage)
+    r = len(ctxts)
+    coverage = []
+    methylated = []
 
-  coverage, methylated = select_subseq(coverage, methylated, l, ctxt);
-  # merge every s observations
-  coverage, methylated = group(coverage, methylated, s);
-  print 'length of the grouped sequence = '
-  print len(coverage)
+    for ctxt in ctxts:
+        coverage_c, methylated_c = select_subseq(coverage, methylated, l, ctxt);
+        # merge every s observations
+        coverage_c, methylated_c = group(coverage_c, methylated_c, s);
+        coverage.append(coverage_c);
+        methylated.append(methylated_c);
 
-  return coverage, methylated
+    coverage = np.asarray(coverage).T.tolist()
+    methylated = np.asarray(methylated).T.tolist()
+    #print 'length of the grouped sequence = '
+    #print len(coverage)
+    #Suppose the data has contexts x,y, then the data is like
+    #[[x1, y1], [x2, y2], .... [xn, yn]]
+
+    return coverage, methylated
 
 
 def triples_from_seq(coverage, methylated, formating):
@@ -71,7 +82,9 @@ def triples_from_seq(coverage, methylated, formating):
   print 'N = '
   print N
 
-  x = map(lambda c, m: bh.to_x(c, m, N), coverage, methylated)
+  #x = map(lambda c, m: bh.to_x(c, m, N), coverage, methylated)
+  l, r = np.shape(coverage)
+  x = [[bh.to_x(coverage[i,j], methylated[i,j], N) for j in range(r)] for i in range(l)]
 
   l = len(coverage)
   # compute E[1/(n+2)]
@@ -89,7 +102,7 @@ def triples_from_seq(coverage, methylated, formating):
     return N, X, a
 
 
-def data_prep(filename, formating='explicit', l=None, s=1, ctxt=range(16)):
+def data_prep(filename, formating='explicit', l=None, s=1, ctxts=[range(16)]):
   """
   Main function for importing triples from raw INTACT DNA methylation data
   Inputs:
@@ -106,7 +119,7 @@ def data_prep(filename, formating='explicit', l=None, s=1, ctxt=range(16)):
     a: correction term \E[1/(n+2)] used in explicit feature map
   """
 
-  coverage, methylated = seq_prep(filename, l, s, ctxt);
+  coverage, methylated = seq_prep(filename, l, s, ctxts);
   return triples_from_seq(coverage, methylated, formating) + (coverage, methylated)
 
 

@@ -35,6 +35,21 @@ def phi_binning_igz_cached(*args):
     return cache_results(phi_binning_igz)(*args)
 
 # dealing with (0,0) observation is a bit tricky. Here we create a new dimension for these obs.
+def phi_beta_shifted_cached_listify(*args):
+    return phi_listed(phi_beta_shifted_cached)
+
+def phi_binning_cached_listify(*args):
+    return phi_listed(phi_binning_cached)
+
+def phi_binning_igz_cached_listify(*args):
+    return phi_listed(phi_binning_igz_cached)
+
+# automatically extend phi to domains where there is a list
+def phi_listify(phi):
+    return lambda xs, N, n: np.flatten(np.array([phi(x, N, n) for x in xs]))
+
+def phi_lims(n, r):
+    return range(0, r*n+1, n)
 
 def phi_binning(x, N, n):
     p = np.zeros(n);
@@ -191,7 +206,7 @@ def get_O(phi, N, n, C_h, a):
         Output:
             p_h: estimated methylating probability
     '''
-    p_h = get_p(phi, N, n, C_h, a);
+    p_h = get_p(phi, N, C_h, a);
 
     if (phi == phi_onehot or phi == phi_beta):
         O_h = get_O_binom(m, N, p_h)
@@ -202,7 +217,9 @@ def get_O(phi, N, n, C_h, a):
     return O_h
 
 
-def get_p(phi, N, n, C_h, a):
+def get_p(phi, N, C_h, a):
+
+    n, m = np.shape(C_h);
 
     if (phi == phi_onehot):
         p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
@@ -218,3 +235,7 @@ def get_p(phi, N, n, C_h, a):
     p_h = bh.proj_zeroone(p_h)
 
     return p_h
+
+def get_pc(phi, N, C_h, a, lims):
+    r = len(lims)-1;
+    return np.asarray([get_p(phi, N, C_h[lims(c):lims(c+1)], a) for c in range(r)])

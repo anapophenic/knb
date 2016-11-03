@@ -27,122 +27,125 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 
             print 'ce = '
             print ce
             for s in segments:
-                for ctxt in ctxts:
-                    print 's = '
-                    print s
-                    print 'ctxt = '
-                    print ctxt
-                    print 'Reading Data..'
-                    filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
-                    N, x_zipped, a, coverage, methylated = di.data_prep(filename,'explicit', None, s, ctxt);
+                #for ctxt in ctxts:
+                print 's = '
+                print s
+                print 'ctxt = '
+                print ctxt
+                r = len(ctxt)
+                print 'r = '
+                print r
+                print 'Reading Data..'
+                filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
+                N, x_zipped, a, coverage, methylated = di.data_prep(filename,'explicit', None, s, ctxts);
 
-                    #print x_zipped
+                #print x_zipped
 
-                    #for l in [10000, 20000, 40000, 80000, 160000, 320000]:
-                    for l in lengths:
-                        for l_test in lengths_test:
-                            coverage_test, methylated_test = di.seq_prep(filename, l_test, s, ctxt);
-                            if l_test == None:
-                                l_test = len(coverage_test)
-                                print l_test
-
-                            print 'l = '
-                            print l
-                            print 'N = '
-                            print N
-                            print 'a = '
-                            print a
-                            print 'l_test = '
+                #for l in [10000, 20000, 40000, 80000, 160000, 320000]:
+                for l in lengths:
+                    for l_test in lengths_test:
+                        coverage_test, methylated_test = di.seq_prep(filename, l_test, s, ctxts);
+                        if l_test == None:
+                            l_test = len(coverage_test)
                             print l_test
 
-                            # prepare for training data
-                            coverage_train = coverage[:l]
-                            methylated_train = methylated[:l]
-                            x_importance_weighted = di.importance_weightify(x_zipped, l)
-                            #print x_importance_weighted
+                        print 'l = '
+                        print l
+                        print 'N = '
+                        print N
+                        print 'a = '
+                        print a
+                        print 'l_test = '
+                        print l_test
 
-                            #X = X[:10000,:]
+                        # prepare for training data
+                        coverage_train = coverage[:l]
+                        methylated_train = methylated[:l]
+                        x_importance_weighted = di.importance_weightify(x_zipped, l)
+                        #print x_importance_weighted
 
-                            for phi in phis:
-                                print 'phi = '
-                                print fm.phi_name(phi)
+                        #X = X[:10000,:]
 
-                                print 'Constructing Moments..'
-                                P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
+                        for phi in phis:
+                            print 'phi = '
+                            print fm.phi_name(phi)
 
-                                #print 'C = '
-                                #print C
+                            print 'Constructing Moments..'
+                            P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
 
-                                #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
-                                #save the moments in a file
+                            #print 'C = '
+                            #print C
 
-                                print 'Estimating..'
+                            #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
+                            #save the moments in a file
 
-                                for m in ms:
-                                    print 'm = '
-                                    print m
-                                    C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
-                                    #C_h, T_h, pi_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
-                                    print 'C_h = '
-                                    print C_h
+                            print 'Estimating..'
 
-                                    print 'T_h = '
-                                    print T_h
+                            for m in ms:
+                                print 'm = '
+                                print m
+                                C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
+                                #C_h, T_h, pi_h = estimate(R_21, R_31, R_23, R_13, R_123, m)
+                                print 'C_h = '
+                                print C_h
 
-                                    print 'pi_h = '
-                                    print pi_h
+                                print 'T_h = '
+                                print T_h
 
-                                    p_h = fm.get_p(phi, N, n, C_h, a)
-                                    print 'p_h = '
-                                    print p_h
+                                print 'pi_h = '
+                                print pi_h
 
-                                    print 'coverage_train = '
-                                    print len(coverage_train)
+                                lims = fm.phi_lims(n, r);
+                                p_ch = fm.get_pc(phi, N, n, C_h, a, lims)
+                                print 'p_ch = '
+                                print p_ch
 
-                                    p_h, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_h, T_h, pi_h, bw_iters)
+                                print 'coverage_train = '
+                                print len(coverage_train)
+                                #p_h, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_h, T_h, pi_h, bw_iters)
 
-                                    #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
-                                    #print 'C_h_p = '
-                                    #print C_h_p
-                                    #print 'T_h_p = '
-                                    #print T_h_p
-                                    #print get_p(phi, N, n, O_h)
-                                    fig_title = vis.get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt)
-
-
-                                    p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage_test, methylated_test, i)
-                                    print 'posterior decoding...'
-                                    h_dec_p = hi.posterior_decode(l_test, pi_h, T_h, p_x_h);
-                                    color_scheme = vis.get_color_scheme(h_dec_p, m)
-                                    posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
-                                    vis.browse_states(h_dec_p, posterior_title, color_scheme)
-
-                                    #print 'viterbi decoding...'
-                                    #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
-                                    #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
-                                    #browse_states(h_dec_v, viterbi_title, color_scheme)
-
-                                    print 'generating feature map graph...'
-                                    feature_map_title = fig_title + '_feature_map.pdf'
-                                    vis.print_feature_map(C_h, color_scheme, feature_map_title)
+                                #C_h_p, T_h_p = estimate_refine(C_h, P_21, phi, N, n, m, a)
+                                #print 'C_h_p = '
+                                #print C_h_p
+                                #print 'T_h_p = '
+                                #print T_h_p
+                                #print get_p(phi, N, n, O_h)
+                                fig_title = vis.get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt)
 
 
-                                    #print 'printing matrices'
-                                    print T_h
-                                    #T_title = fig_title + 'T_h.pdf'
-                                    #vis.print_m(T_h, T_title)
+                                p_x_h = lambda i: bh.p_x_ch_binom(p_ch, coverage_test, methylated_test, i)
+                                print 'posterior decoding...'
+                                h_dec_p = hi.posterior_decode(l_test, pi_h, T_h, p_x_h);
+                                color_scheme = vis.get_color_scheme(h_dec_p, m)
+                                posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
+                                vis.browse_states(h_dec_p, posterior_title, color_scheme)
 
-                                    print C_h
-                                    #C_title = fig_title + 'C_h.pdf'
-                                    #vis.print_m(C_h, C_title)
+                                #print 'viterbi decoding...'
+                                #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
+                                #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
+                                #browse_states(h_dec_v, viterbi_title, color_scheme)
 
-                                    print p_h
-                                    #p_title = fig_title + 'p_h.pdf'
-                                    #vis.print_v(p_h, p_title)
+                                print 'generating feature map graph...'
+                                feature_map_title = fig_title + '_feature_map.pdf'
+                                vis.print_feature_map(C_h, color_scheme, feature_map_title)
 
-                                    print pi_h
-                                    #pi_title = fig_title + 'pi_h.pdf'
-                                    #vis.print_v(pi_h, pi_title)
+
+                                #print 'printing matrices'
+                                print T_h
+                                #T_title = fig_title + 'T_h.pdf'
+                                #vis.print_m(T_h, T_title)
+
+                                print C_h
+                                #C_title = fig_title + 'C_h.pdf'
+                                #vis.print_m(C_h, C_title)
+
+                                print p_h
+                                #p_title = fig_title + 'p_h.pdf'
+                                #vis.print_v(p_h, p_title)
+
+                                print pi_h
+                                #pi_title = fig_title + 'pi_h.pdf'
+                                #vis.print_v(pi_h, pi_title)
 
 def synthetic_test_data(p, T, pi, N, l_test):
 
@@ -297,9 +300,9 @@ if __name__ == '__main__':
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
     cells = ['E2', 'E1', 'E']
     #cells = ['E']
-    n = 50
+    n = 10
     ms = range(2, 7)
-    ctxts = [range(0,4), range(4,8), range(8,12), range(12, 16), range(0,16)]
+    ctxts = [range(0,4), range(4,8), range(8,12), range(12, 16)]
 
 
     '''
@@ -313,7 +316,8 @@ if __name__ == '__main__':
     lengths = [320000]
     lengths_test = [100000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
-    phis = [fm.phi_beta_shifted_cached]
+    #phis = [fm.phi_beta_shifted_cached]
+    phis = [fm.phi_beta_shifted_cached_listify]
     real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 0, path_name)
 
 

@@ -114,6 +114,23 @@ def p_x_h_binom(p_h, coverage, methylated, i):
         O_x[j] = stats.binom.pmf(methylated[i], coverage[i], p_h[j])
     return O_x
 
+def p_x_ch_binom(p_ch, coverage, methylated, i):
+    '''
+    p_ch: c * m matrix
+    methylated, coverage: l * c matrix
+    c: #contexts
+    m: #hidden states
+    l: length of the sequence
+    '''
+
+    r, m = np.shape(p_ch)[1];
+    O_x = np.ones(m);
+    for j in range(m):
+        for c in range(r):
+            O_x[j] = O_x[j] * stats.binom.pmf(methylated[i,c], coverage[i,c], p_ch[c,j])
+
+    return O_x
+
 #hmm function returning a particular row of observation matrix depending
 #on the position of the observation
 def p_x_h_O(O, x, i):
