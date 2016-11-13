@@ -18,7 +18,7 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 
     except:
         os.mkdir(path_name)
 
-    sys.stdout = open(path_name+'/parameters.txt', 'w+');
+    #sys.stdout = open(path_name+'/parameters.txt', 'w+');
 
     for ch in chrs:
         print 'ch = '
@@ -31,20 +31,33 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 
                 print 's = '
                 print s
                 print 'ctxt = '
-                print ctxt
-                r = len(ctxt)
+                print ctxts
+                r = len(ctxts)
                 print 'r = '
                 print r
                 print 'Reading Data..'
                 filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
-                N, x_zipped, a, coverage, methylated = di.data_prep(filename,'explicit', None, s, ctxts);
 
+                coverage, methylated = di.seq_prep(filename, None, s, ctxts);
+                N, x_zipped, a = di.triples_from_seq(coverage, methylated, 'explicit')
+
+                #print 'x_zipped = '
                 #print x_zipped
+                print 'coverage = '
+                print coverage
+                print 'methylated = '
+                print methylated
 
                 #for l in [10000, 20000, 40000, 80000, 160000, 320000]:
                 for l in lengths:
                     for l_test in lengths_test:
                         coverage_test, methylated_test = di.seq_prep(filename, l_test, s, ctxts);
+
+                        print 'coverage_test = '
+                        print coverage_test
+                        print 'methylated_test = '
+                        print methylated_test
+
                         if l_test == None:
                             l_test = len(coverage_test)
                             print l_test
@@ -96,7 +109,7 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 
                                 print pi_h
 
                                 lims = fm.phi_lims(n, r);
-                                p_ch = fm.get_pc(phi, N, n, C_h, a, lims)
+                                p_ch = fm.get_pc(phi, N, C_h, a, lims)
                                 print 'p_ch = '
                                 print p_ch
 
@@ -110,7 +123,7 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 
                                 #print 'T_h_p = '
                                 #print T_h_p
                                 #print get_p(phi, N, n, O_h)
-                                fig_title = vis.get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt)
+                                fig_title = vis.get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxts)
 
 
                                 p_x_h = lambda i: bh.p_x_ch_binom(p_ch, coverage_test, methylated_test, i)
@@ -127,7 +140,7 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 
 
                                 print 'generating feature map graph...'
                                 feature_map_title = fig_title + '_feature_map.pdf'
-                                vis.print_feature_map(C_h, color_scheme, feature_map_title)
+                                vis.print_feature_map(C_h, color_scheme, feature_map_title, lims)
 
 
                                 #print 'printing matrices'
@@ -139,7 +152,7 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxts, 
                                 #C_title = fig_title + 'C_h.pdf'
                                 #vis.print_m(C_h, C_title)
 
-                                print p_h
+                                print p_ch
                                 #p_title = fig_title + 'p_h.pdf'
                                 #vis.print_v(p_h, p_title)
 
@@ -300,7 +313,7 @@ if __name__ == '__main__':
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
     cells = ['E2', 'E1', 'E']
     #cells = ['E']
-    n = 10
+    n = 40
     ms = range(2, 7)
     ctxts = [range(0,4), range(4,8), range(8,12), range(12, 16)]
 
@@ -313,7 +326,7 @@ if __name__ == '__main__':
     path_name = 'all_ctxts'
     #segments = range(1, 6)
     segments = [1]
-    lengths = [320000]
+    lengths = [10000, 20000, 40000, 80000, 160000, 320000]
     lengths_test = [100000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     #phis = [fm.phi_beta_shifted_cached]

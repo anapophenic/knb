@@ -3,96 +3,71 @@ import numpy as np
 import binom_hmm as bh
 from collections import Counter
 
-def group(coverage, methylated, s):
-
-  l = np.shape(coverage)[0]
-
-  # zipping this way group every s elts together
-  coverage_zipped = zip(*[coverage[i:(l-s+i)] for i in range(s)])
-  methylated_zipped = zip(*[methylated[i:(l-s+i)] for i in range(s)])
-  coverage_merged = map(sum, coverage_zipped)
-  methylated_merged = map(sum, methylated_zipped)
-  coverage_subs = coverage_merged[0:l-s+i:s]
-  methylated_subs = methylated_merged[0:l-s+i:s]
-
-  return coverage, methylated
-
 def importance_weightify(x_zipped, l):
-    # preparing data
-    #l = np.shape(X_zipped)[0]
-    return Counter(x_zipped[:l])
+    return Counter(x_zipped[:l]);
 
 def load_from_file(filename):
     mat = scipy.io.loadmat(filename)
-    #print mat
-    #print mat['mc']
-    #print mat['h']
-    #print mat['bins']
-
     coverage = mat['h']
     methylated = mat['mc']
 
-    print 'length of the original sequence = '
-    print len(coverage)
-
-    return coverage, methylated
-
-def select_subseq(coverage, methylated, l, ctxt):
-    coverage = coverage[:l, ctxt]
-    methylated = methylated[:l, ctxt]
-
-    print 'shape of the coverage parameter = '
+    print 'shape of the original sequence = '
     print np.shape(coverage)
 
-    # merging all the contexts with cytosine(C) at this point:
-    coverage = np.sum(coverage, axis=1);
-    methylated = np.sum(methylated, axis=1);
-
     return coverage, methylated
+
+def group_horizontal(seqs, dims):
+    return np.sum(seqs[:,dims], axis=1)
+
+def group_vertical(seqs, dims):
+    return np.sum(seqs[dims,:], axis=0)
+
+def group_vertical_2(seqs, s):
+    l, r = np.shape(seqs)
+    grouped = sum([seqs[i:l-s+i+1,:] for i in range(s)])
+    return grouped[range(0,l-s+1,s),:]
 
 def seq_prep(filename, l=None, s=1, ctxts=[range(16)]):
-    (coverage, methylated) = load_from_file(filename);
+    '''
+    Suppose the data has contexts x,y, then the data is like
+    [[x1, .., xn], [y1, ..., yn]]
+    '''
+    coverage, methylated = load_from_file(filename);
+
     if l is None:
         l = len(coverage)
-
     r = len(ctxts)
-    coverage = []
-    methylated = []
+    l, dim = np.shape(coverage)
 
-    for ctxt in ctxts:
-        coverage_c, methylated_c = select_subseq(coverage, methylated, l, ctxt);
-        # merge every s observations
-        coverage_c, methylated_c = group(coverage_c, methylated_c, s);
-        coverage.append(coverage_c);
-        methylated.append(methylated_c);
+    #vertical_groups = [xrange(i*s,(i+1)*s) for i in range(l/s)]
+    #coverage_h = np.array([group_vertical(coverage, vertical_groups[j]) for j in range(l/s)])
+    #methylated_h = np.array([group_vertical(methylated, vertical_groups[j]) for j in range(l/s)])
 
-    coverage = np.asarray(coverage).T.tolist()
-    methylated = np.asarray(methylated).T.tolist()
-    #print 'length of the grouped sequence = '
-    #print len(coverage)
-    #Suppose the data has contexts x,y, then the data is like
-    #[[x1, y1], [x2, y2], .... [xn, yn]]
+    coverage_h = group_vertical_2(coverage, s)
+    methylated_h = group_vertical_2(methylated, s)
 
-    return coverage, methylated
+    #print np.shape(coverage_h)
+    #print coverage_h
+
+    coverage_hv = np.array([group_horizontal(coverage_h, ctxts[i]) for i in range(r)])
+    methylated_hv = np.array([group_horizontal(methylated_h, ctxts[i]) for i in range(r)])
+
+    return coverage_hv, methylated_hv
 
 
 def triples_from_seq(coverage, methylated, formating):
   N = np.amax(coverage)
-
   print 'N = '
   print N
 
   #x = map(lambda c, m: bh.to_x(c, m, N), coverage, methylated)
-  l, r = np.shape(coverage)
-  x = [[bh.to_x(coverage[i,j], methylated[i,j], N) for j in range(r)] for i in range(l)]
+  #print 'coverage = '
+  #print np.shape(coverage)
+  r, l = np.shape(coverage)
+  x = [tuple([bh.to_x(coverage[c,i], methylated[c,i], N) for c in range(r)]) for i in range(l)]
 
-  l = len(coverage)
   # compute E[1/(n+2)]
-  a = sum(1.0 / (coverage+2)) / l
-
-  #X0 = np.zeros(l)
-  #for i in range(l):
-  #  X0[i] = coverage[i]*(N+1) + methylated[i]
+  a = np.sum(1.0 / (coverage+2), axis = 1) / l
 
   if formating=='explicit':
     x_zipped = zip(x[0:l], x[1:l+1], x[2:l+2])
@@ -132,3 +107,23 @@ if __name__ == '__main__':
   print N
   print X
   print a
+
+
+  #print mat
+  #print mat['mc']
+  #print mat['h']
+  #print mat['bins']
+  #coverage = [[sum(sum(coverage[lims[i]:lims[i+1], ctxts[c]])) for c in range(r)] for i in range(l_n)]
+  #methylated = [[sum(sum(methylated[lims[i]:lims[i+1], ctxts[c]])) for c in range(r)] for i in range(l_n)]
+
+
+  #x_zipped_listed_iw =
+  #l = np.shape(X_zipped)[0]
+  #print x_zipped
+
+  #print 'length of the grouped sequence = '
+  #print len(coverage)
+
+#X0 = np.zeros(l)
+#for i in range(l):
+#  X0[i] = coverage[i]*(N+1) + methylated[i]

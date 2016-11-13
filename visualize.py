@@ -16,6 +16,7 @@ def print_m(M, mat_title):
     plt.close(fig)
 
 def get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt):
+
     return path_name + '/' + 'cell = ' + ce + \
            '_chr = ' + ch + '_l = ' + str(l) + \
            '_s = ' + str(s) + '_m = ' + str(m) + \
@@ -23,23 +24,24 @@ def get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt):
            '_ctxt = ' + bh.ctxt_name(ctxt)
 
 
-def print_feature_map(C_h, color_scheme, feature_map_title):
+def print_feature_map(C_h, color_scheme, feature_map_title, lims):
     n, m = np.shape(C_h)
+    r = len(lims) - 1
 
     fig = plt.figure(1)
     plt.hold(True)
-    ax = fig.add_subplot(1,1,1)
-    ax.set_title(r'Expected Feature Map given Hidden States')
 
-    ax.set_xlabel(r'$t$')
-    ax.set_ylabel(r'$\mathbb{E}[\phi(x,t)|h]$')
+    fig.set_size_inches(40, 10)
+    for j in range(r):
+        ax = fig.add_subplot(1,r,j+1)
+        ax.set_title(r'Expected Feature Map given Hidden States')
 
-    #print color_scheme
-
-    for i in range(m):
-        print i
-        print C_h[:,i]
-        plt.plot(bh.unif_partition(n), C_h[:,i], color=color_scheme[i], linewidth=3)
+        ax.set_xlabel(r'$t$')
+        ax.set_ylabel(r'$\mathbb{E}[\phi(x,t)|h]$')
+        for i in range(m):
+            #print i
+            #print C_h[lims[j]:lims[j+1],i]
+            plt.plot(bh.unif_partition(lims[j+1]-lims[j]), C_h[lims[j]:lims[j+1],i], color=color_scheme[i], linewidth=3)
 
     fig.savefig(feature_map_title)
     # save the figure to file

@@ -36,20 +36,20 @@ def phi_binning_igz_cached(*args):
 
 # dealing with (0,0) observation is a bit tricky. Here we create a new dimension for these obs.
 def phi_beta_shifted_cached_listify(*args):
-    return phi_listed(phi_beta_shifted_cached)
+    return phi_listify(phi_beta_shifted_cached)(*args)
 
 def phi_binning_cached_listify(*args):
-    return phi_listed(phi_binning_cached)
+    return phi_listify(phi_binning_cached)(*args)
 
 def phi_binning_igz_cached_listify(*args):
-    return phi_listed(phi_binning_igz_cached)
+    return phi_listify(phi_binning_igz_cached)(*args)
 
 # automatically extend phi to domains where there is a list
 def phi_listify(phi):
-    return lambda xs, N, n: np.flatten(np.array([phi(x, N, n) for x in xs]))
+    return lambda xs, N, n: np.ndarray.flatten(np.array([phi(x, N, n/len(list(xs))) for x in list(xs)]))
 
 def phi_lims(n, r):
-    return range(0, r*n+1, n)
+    return range(0, n+1, n/r)
 
 def phi_binning(x, N, n):
     p = np.zeros(n);
@@ -190,9 +190,9 @@ def phi_name(phi):
         return "onehot"
     elif phi == phi_beta:
         return "beta_fixN"
-    elif phi == phi_beta_shifted or phi == phi_beta_shifted_cached:
+    elif phi == phi_beta_shifted or phi == phi_beta_shifted_cached or phi == phi_beta_shifted_cached_listify:
         return "beta_full"
-    elif phi == phi_binning or phi == phi_binning_cached:
+    elif phi == phi_binning or phi == phi_binning_cached or phi == phi_binning_cached_listify:
         return "binning"
 
 
@@ -225,11 +225,11 @@ def get_p(phi, N, C_h, a):
         p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
     elif (phi == phi_beta):
         p_h = ((N+1) * np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0) - 1) / N
-    elif (phi == phi_beta_shifted or phi == phi_beta_shifted_cached):
+    elif (phi == phi_beta_shifted or phi == phi_beta_shifted_cached or phi == phi_beta_shifted_cached_listify):
         p_h = (np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
-    elif (phi == phi_binning_igz or phi == phi_binning_igz_cached):
+    elif (phi == phi_binning_igz or phi == phi_binning_igz_cached or phi == phi_binning_igz_cached_listify):
         p_h = np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0)
-    elif (phi == phi_binning or phi == phi_binning_cached):
+    elif (phi == phi_binning or phi == phi_binning_cached or phi == phi_binning_cached_listify):
         p_h = np.sum(np.diag(bh.unif_partition(n-1)).dot(C_h[:-1,:]), axis = 0)
 
     p_h = bh.proj_zeroone(p_h)
@@ -238,4 +238,5 @@ def get_p(phi, N, C_h, a):
 
 def get_pc(phi, N, C_h, a, lims):
     r = len(lims)-1;
-    return np.asarray([get_p(phi, N, C_h[lims(c):lims(c+1)], a) for c in range(r)])
+    print lims
+    return np.asarray([get_p(phi, N, C_h[lims[c]:lims[c+1],:], a[c]) for c in range(r)])

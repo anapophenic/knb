@@ -18,8 +18,8 @@ def forward_var(l, pi, T, p_x_h):
         alpha[:,i] = alpha[:,i] / np.sum(alpha[:,i])
         if alpha[1,i] == np.nan:
             break
-        print 'alpha[:,i] = '
-        print alpha[:,i]
+        #print 'alpha[:,i] = '
+        #print alpha[:,i]
 
     return alpha
 

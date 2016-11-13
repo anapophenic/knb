@@ -92,11 +92,14 @@ def get_O_stochastic_N(p_N, p):
 
     return O
 
-def ctxt_name(ctxt):
-    s = ""
-    for c in ctxt:
-        s = s + str(c)
+def ctxt_name(ctxts):
+    s = ''
+    for ctxt in ctxts:
+        s = s + '|'
+        for c in ctxt:
+            s = s + str(c)
 
+    print s
     return s
 
 #binomial hmm function returning a particular row of observation matrix depending
@@ -123,11 +126,13 @@ def p_x_ch_binom(p_ch, coverage, methylated, i):
     l: length of the sequence
     '''
 
-    r, m = np.shape(p_ch)[1];
+    r, m = np.shape(p_ch);
     O_x = np.ones(m);
     for j in range(m):
         for c in range(r):
-            O_x[j] = O_x[j] * stats.binom.pmf(methylated[i,c], coverage[i,c], p_ch[c,j])
+            #print '----------------'
+            #print methylated[c,i], coverage[c,i], p_ch[c,j]
+            O_x[j] = O_x[j] * stats.binom.pmf(methylated[c,i], coverage[c,i], p_ch[c,j])
 
     return O_x
 
