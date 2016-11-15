@@ -92,9 +92,9 @@ def get_O_stochastic_N(p_N, p):
 
     return O
 
-def ctxt_name(ctxts):
+def ctxt_name(ctxt_group):
     s = ''
-    for ctxt in ctxts:
+    for ctxt in ctxt_group:
         s = s + '|'
         for c in ctxt:
             s = s + str(c)

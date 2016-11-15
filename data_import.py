@@ -19,38 +19,37 @@ def load_from_file(filename):
 def group_horizontal(seqs, dims):
     return np.sum(seqs[:,dims], axis=1)
 
-def group_vertical(seqs, dims):
-    return np.sum(seqs[dims,:], axis=0)
+#def group_vertical(seqs, dims):
+#    return np.sum(seqs[dims,:], axis=0)
 
-def group_vertical_2(seqs, s):
+def group_vertical(seqs, s):
     l, r = np.shape(seqs)
     grouped = sum([seqs[i:l-s+i+1,:] for i in range(s)])
     return grouped[range(0,l-s+1,s),:]
 
-def seq_prep(filename, l=None, s=1, ctxts=[range(16)]):
+def seq_prep(filename, l=None, s=1, ctxt_group=[range(16)]):
     '''
-    Suppose the data has contexts x,y, then the data is like
-    [[x1, .., xn], [y1, ..., yn]]
+    Suppose the data has contexts x,y, then the data is a 2d array of size r * l
     '''
     coverage, methylated = load_from_file(filename);
 
     if l is None:
         l = len(coverage)
-    r = len(ctxts)
+    r = len(ctxt_group)
     l, dim = np.shape(coverage)
 
     #vertical_groups = [xrange(i*s,(i+1)*s) for i in range(l/s)]
     #coverage_h = np.array([group_vertical(coverage, vertical_groups[j]) for j in range(l/s)])
     #methylated_h = np.array([group_vertical(methylated, vertical_groups[j]) for j in range(l/s)])
 
-    coverage_h = group_vertical_2(coverage, s)
-    methylated_h = group_vertical_2(methylated, s)
+    coverage_h = group_vertical(coverage, s)
+    methylated_h = group_vertical(methylated, s)
 
     #print np.shape(coverage_h)
     #print coverage_h
 
-    coverage_hv = np.array([group_horizontal(coverage_h, ctxts[i]) for i in range(r)])
-    methylated_hv = np.array([group_horizontal(methylated_h, ctxts[i]) for i in range(r)])
+    coverage_hv = np.array([group_horizontal(coverage_h, ctxt_group[i]) for i in range(r)])
+    methylated_hv = np.array([group_horizontal(methylated_h, ctxt_group[i]) for i in range(r)])
 
     return coverage_hv, methylated_hv
 
@@ -77,7 +76,7 @@ def triples_from_seq(coverage, methylated, formating):
     return N, X, a
 
 
-def data_prep(filename, formating='explicit', l=None, s=1, ctxts=[range(16)]):
+#def data_prep(filename, formating='explicit', l=None, s=1, ctxts=[range(16)]):
   """
   Main function for importing triples from raw INTACT DNA methylation data
   Inputs:
@@ -94,8 +93,8 @@ def data_prep(filename, formating='explicit', l=None, s=1, ctxts=[range(16)]):
     a: correction term \E[1/(n+2)] used in explicit feature map
   """
 
-  coverage, methylated = seq_prep(filename, l, s, ctxts);
-  return triples_from_seq(coverage, methylated, formating) + (coverage, methylated)
+#  coverage, methylated = seq_prep(filename, l, s, ctxts);
+#  return triples_from_seq(coverage, methylated, formating) + (coverage, methylated)
 
 
 
