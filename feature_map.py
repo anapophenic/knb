@@ -45,6 +45,9 @@ def phi_binning_igz_cached_listify(*args):
     return phi_listify(phi_binning_igz_cached)(*args)
 
 # automatically extend phi to domains where there is a list
+# basically, split the dimensions to all the contexts equally
+# This only works if n is divisible by the number of contexts
+# Otherwise the actual total dimension of feature map would not be n!
 def phi_listify(phi):
     return lambda xs, N, n: np.ndarray.flatten(np.array([phi(x, N, n/len(list(xs))) for x in list(xs)]))
 
@@ -221,12 +224,22 @@ def get_p(phi, N, C_h, a):
 
     n, m = np.shape(C_h);
 
+    #Re-normalize the C_h so that the multiple contexts case works correctly
+    #In multiple contexts case, we contatenate the feature representations. Therefore,
+    #for extracting the parameters, we need to break them to respective contexts.
+    #Important step: renormalize the feature maps
+    C_h = bh.postprocess_m(C_h);
+
     if (phi == phi_onehot):
         p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
     elif (phi == phi_beta):
         p_h = ((N+1) * np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0) - 1) / N
     elif (phi == phi_beta_shifted or phi == phi_beta_shifted_cached or phi == phi_beta_shifted_cached_listify):
         p_h = (np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
+        #print np.sum(C_h, axis = 0)
+        #print np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0)
+        #print a
+        #print p_h
     elif (phi == phi_binning_igz or phi == phi_binning_igz_cached or phi == phi_binning_igz_cached_listify):
         p_h = np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0)
     elif (phi == phi_binning or phi == phi_binning_cached or phi == phi_binning_cached_listify):
@@ -239,4 +252,5 @@ def get_p(phi, N, C_h, a):
 def get_pc(phi, N, C_h, a, lims):
     r = len(lims)-1;
     print lims
+    print a
     return np.asarray([get_p(phi, N, C_h[lims[c]:lims[c+1],:], a[c]) for c in range(r)])

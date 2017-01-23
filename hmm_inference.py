@@ -5,53 +5,69 @@ import binom_hmm as bh
 import numpy as np
 from scipy import stats
 
+'''
+Throughout we use the following conventions:
+l: length of the horizon
+pi: initial probability
+T: transition probability
+p_x_h: observation distribution (in functional form)
+'''
 
 def forward_var(l, pi, T, p_x_h):
     m = np.shape(pi)[0];
     alpha = np.zeros((m, l));
+    ln_z = np.zeros(l);
+
     for i in range(l):
         if i == 0:
             alpha[:,i] = np.diag(p_x_h(i)).dot(pi);
+            ln_z[i] = np.log(np.sum(alpha[:,i]));
         else:
-            alpha[:,i] = np.diag(p_x_h(i)).dot(T.dot(alpha[:,i-1]))
-        #normalize
+            alpha[:,i] = np.diag(p_x_h(i)).dot(T.dot(alpha[:,i-1]));
+            ln_z[i] = ln_z[i-1] + np.log(np.sum(alpha[:,i]));
+        #normalize(for numerical stability)
         alpha[:,i] = alpha[:,i] / np.sum(alpha[:,i])
-        if alpha[1,i] == np.nan:
+        if ln_z[i] == np.nan:
             break
         #print 'alpha[:,i] = '
         #print alpha[:,i]
 
-    return alpha
+    return alpha, ln_z
 
 def backward_var(l, pi, T, p_x_h):
     m = np.shape(pi)[0];
     beta = np.zeros((m, l));
+    ln_z = np.zeros(l);
+
     for i in range(l-1,-1,-1):
         if i == l-1:
             beta[:,i] = np.ones(m);
+            ln_z[i] = np.log(np.sum(beta[:,i]));
         else:
             beta[:,i] = (T.T).dot(np.diag(p_x_h(i+1)).dot(beta[:,i+1])).T
-        #normalize
-        beta[:,i] = beta[:,i] / sum(beta[:,i])
+            ln_z[i] = ln_z[i+1] + np.log(np.sum(beta[:,i]))
+        #normalize(for numerical stability)
+        beta[:,i] = beta[:,i] / np.sum(beta[:,i])
+        if ln_z[i] == np.nan:
+            break
+        #print 'alpha[:,i] = '
+        #print alpha[:,i]
 
-    return beta
+    return beta, ln_z
 
 def posterior_decode(l, pi, T, p_x_h):
-    '''
-    l: horizon
-    pi: initial probability
-    T: transition probability
-    p_x_h: observation distribution
-    '''
 
     m = np.shape(pi)[0];
 
-    alpha = forward_var(l, pi, T, p_x_h);
-    beta = backward_var(l, pi, T, p_x_h);
+    alpha, ln_z_alpha = forward_var(l, pi, T, p_x_h);
+    beta, ln_z_beta = backward_var(l, pi, T, p_x_h);
 
     h_dec = np.int_(np.zeros(l));
 
     for i in range(l):
+        # Sanity Check:
+        # The likelihood of the data wrt the model should be independent of the choice of i
+        # print ln_z_alpha[i] + ln_z_beta[i] + np.log(alpha[:,i].dot(beta[:,i]))
         alphabeta = alpha[:,i] * beta[:,i];
         h_dec[i] = np.argmax(alphabeta)
 
@@ -77,7 +93,7 @@ def viterbi_decode(l, pi, T, p_x_h):
                     if tmp_lkhd > max_lkhd:
                         max_k = k;
                         max_lkhd = tmp_lkhd;
-                pre[j,i] = max_k
+                pre[j,i] = max_k;
                 gamma[j,i] = max_lkhd;
 
     max_j = 0
@@ -97,17 +113,38 @@ def viterbi_decode(l, pi, T, p_x_h):
 
 if __name__ == '__main__':
 
-    '''
     #Synthetic Dataset:
     n = 20
     m = 6
-    l = 50
-    min_sigma_t = 0.7
-    min_sigma_o = 0.8
+    l = 100
+    N = 20
+    min_sigma_t = 0.6
+    min_sigma_o = 0.7
+    r = 4
 
-    O = dg.generate_O(m, n, min_sigma_o);
-    print 'O = '
-    print O
+    #O = dg.generate_O(m, n, min_sigma_o);
+    #print 'O = '
+    #print O
+
+    print 'Generating O and T..'
+    #p = dg.generate_p(m);
+    #print 'p = '
+    #print p
+
+    p_N = dg.generate_p_N(N);
+    print 'p_N = '
+    print p_N
+
+    p_ch = dg.generate_p_ch(m, r);
+    print 'p_ch = '
+    print p_ch
+
+    #O = get_O_binom(m, N, p);
+    #O = get_O(m, N, min_sigma_o);
+    #O = bh.get_O_stochastic_N(p_N, p);
+    #O = dg.generate_O(m, n, min_sigma_o);
+    #print 'O = '
+    #print O
 
     T = dg.generate_T(m, min_sigma_t);
     print 'T = '
@@ -117,8 +154,11 @@ if __name__ == '__main__':
     print 'pi = '
     print pi
 
-    x, h = dg.generate_seq(T, O, pi, l);
-    p_x_h = lambda i: bh.p_x_h_O(O, x, i);
+    #x, h = dg.generate_seq(O, T, pi, l);
+    #p_x_h = lambda i: bh.p_x_h_O(O, x, i);
+
+    coverage, methylated, h = dg.generate_seq_bin_c(p_ch, p_N, T, pi, l)
+    p_x_h = lambda i: bh.p_x_ch_binom(p_ch, coverage, methylated, i)
 
     h_dec_p = posterior_decode(l, pi, T, p_x_h);
     h_dec_v = viterbi_decode(l, pi, T, p_x_h);
@@ -128,9 +168,9 @@ if __name__ == '__main__':
     print h_dec_v
 
     #(coverage, methylated) = seq_prep(filename, l, s, ctxt);
+
+
     '''
-
-
     #Real Dataset:
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
@@ -177,3 +217,4 @@ if __name__ == '__main__':
     h_dec_p = posterior_decode(l_i, pi_h, T_h, p_x_h);
 
     print h_dec_p.tolist()
+    '''

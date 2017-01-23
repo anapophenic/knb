@@ -42,6 +42,7 @@ def print_feature_map(C_h, color_scheme, feature_map_title, lims):
         for i in range(m):
             #print i
             #print C_h[lims[j]:lims[j+1],i]
+            #print color_scheme[i]
             plt.plot(bh.unif_partition(lims[j+1]-lims[j]), C_h[lims[j]:lims[j+1],i], color=color_scheme[i], linewidth=3)
 
     fig.savefig(feature_map_title)
