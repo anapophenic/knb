@@ -88,8 +88,12 @@ def print_doc_header(texname):
     f.close()
 
 def print_expt_setting(exptname, texname):
+    s1 = "\\begin{verbatim}\n"
+    s2 = "\\end{verbatim}\n"
     f = open(texname, 'a')
+    f.write(s1)
     f.write(exptname)
+    f.write(s2)
     f.close()
 
 def print_table_header(texname):

@@ -299,17 +299,18 @@ if __name__ == '__main__':
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
     #chrs.append('Y')
-    chrs = ['1', '2']
-    #chrs = ['1']
+    #chrs = ['1', '2']
+    chrs = ['1']
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
     #cells = ['E2', 'E1', 'E', 'V8', 'V9', 'V', 'P13P14', 'P15P16', 'P']
-    cells = ['E', 'V', 'P']
-    #cells = ['E']
+    #cells = ['E', 'V', 'P']
+    cells = ['E']
     n = 40
     ms = range(2, 7)
     #ctxt_groups = [[range(0,4)], [range(4,8)], [range(8,12)], [range(12,16)], [range(0,4), range(4,8), range(8,12), range(12, 16)]]
+    ctxt_groups = [[range(0,16)]]
     #ctxt_groups = [[range(0,4)]]
-    ctxt_groups = [[range(0,4), range(4,8), range(8,12), range(12, 16)]]
+    #ctxt_groups = [[range(0,4), range(4,8), range(8,12), range(12, 16)]]
     '''
     Expt 1: Compare Binning Feature vs. Beta Feature
 
