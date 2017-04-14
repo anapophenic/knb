@@ -27,10 +27,12 @@ def group_vertical(seqs, s):
     grouped = sum([seqs[i:l-s+i+1,:] for i in range(s)])
     return grouped[range(0,l-s+1,s),:]
 
-def seq_prep(filename, l=None, s=1, ctxt_group=[range(16)]):
+def seq_prep_ctxt(ce, ch, l=None, s=1, ctxt_group=[range(16)]):
     '''
-    Suppose the data has contexts x,y, then the data is a 2d array of size r * l
+    Suppose the data has r contexts and of length l, then the resultant data is a 2d array of size r * l
     '''
+
+    filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
     coverage, methylated = load_from_file(filename);
 
     if l is None:
@@ -52,6 +54,32 @@ def seq_prep(filename, l=None, s=1, ctxt_group=[range(16)]):
     methylated_hv = np.array([group_horizontal(methylated_h, ctxt_group[i]) for i in range(r)])
 
     return coverage_hv, methylated_hv
+
+def seq_prep_ctxt_ce(ce_group, ch, l=None, s=1, ctxt_group=[range(16)]):
+    coverage_list = [];
+    methylated_list = [];
+
+    for ce in ce_group:
+        coverage_ce, methylated_ce = seq_prep_ctxt(ce, ch, l, s, ctxt_group);
+        coverage_list.append(coverage_ce)
+        methylated_list.append(methylated_ce)
+
+    l_min = 100000000;
+    for coverage in coverage_list:
+        l = np.shape(coverage)[1];
+        if l <= l_min:
+            l_min = l
+
+    print 'l_min = ' + str(l_min)
+
+    for i in range(len(coverage_list)):
+        coverage_list[i] = coverage_list[i][:,:l_min];
+        methylated_list[i] = methylated_list[i][:,:l_min];
+
+    coverage_all = np.vstack(tuple(coverage_list));
+    methylated_all = np.vstack(tuple(methylated_list));
+
+    return coverage_all, methylated_all
 
 
 def triples_from_seq(coverage, methylated, formating):
@@ -76,22 +104,29 @@ def triples_from_seq(coverage, methylated, formating):
     return N, X, a
 
 
+def data_prep_ctxt_ce(ctxt_group, ce_group, s, ch):
+
+    coverage, methylated = seq_prep_ctxt_ce(ce_group, ch, None, s, ctxt_group);
+    N, x_zipped, a = triples_from_seq(coverage, methylated, 'explicit')
+
+    return coverage, methylated, N, x_zipped, a
+
 #def data_prep(filename, formating='explicit', l=None, s=1, ctxts=[range(16)]):
-  """
-  Main function for importing triples from raw INTACT DNA methylation data
-  Inputs:
-   filename: filename for INTACT DNA methylation data
-   format: whether to return the data formatted for explicit feature map
-      or for kernel feature map
-   l: maximum length of data to sample; if None, the whole set is sampled
-   s: number of methylations / coverages to merge
-  Outputs:
-   N: number of maximum number of coverage
-   X_importance_weighted: a dictionary of
-    key: triples (x_1, x_2, x_3)
-    value: total number of cooccurrence of (x_1, x_2, x_3) (importance weight)
-    a: correction term \E[1/(n+2)] used in explicit feature map
-  """
+"""
+Main function for importing triples from raw INTACT DNA methylation data
+Inputs:
+filename: filename for INTACT DNA methylation data
+format: whether to return the data formatted for explicit feature map
+  or for kernel feature map
+l: maximum length of data to sample; if None, the whole set is sampled
+s: number of methylations / coverages to merge
+Outputs:
+N: number of maximum number of coverage
+X_importance_weighted: a dictionary of
+key: triples (x_1, x_2, x_3)
+value: total number of cooccurrence of (x_1, x_2, x_3) (importance weight)
+a: correction term \E[1/(n+2)] used in explicit feature map
+"""
 
 #  coverage, methylated = seq_prep(filename, l, s, ctxts);
 #  return triples_from_seq(coverage, methylated, formating) + (coverage, methylated)

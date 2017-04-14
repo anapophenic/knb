@@ -11,25 +11,25 @@ import visualize as vis
 import os
 import sys
 import itertools
+import scipy.io as io
 
-def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt_groups, bw_iters, path_name, tex_name):
 
-    try:
-        os.stat(path_name)
-    except:
-        os.mkdir(path_name)
+
+def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, ctxt_groups, bw_iters, path_name, tex_name):
+
     #sys.stdout = open(path_name+'/parameters.txt', 'w+');
+    vis.directory_setup(path_name);
 
-    vis.print_doc_header(tex_name);
+    vis.print_doc_header(path_name, tex_name);
 
-    for ch, ce, s, ctxt_group in itertools.product(chrs, cells, segments, ctxt_groups):
-        r = len(ctxt_group)
-        print 'ch = \n' + str(ch) + '\nce = \n' + str(ce) + '\ns = \n' + str(s) + '\nctxt_group = \n' + str(ctxt_group)+ '\nr = \n' + str(r) + '\n'
+    for ch, ce_group, s, ctxt_group in itertools.product(chrs, cell_groups, segments, ctxt_groups):
+        r = len(ctxt_group) * len(ce_group)
+        print 'ch = \n' + str(ch) + '\nce_group = \n' + str(ce_group) + '\ns = \n' + str(s) + '\nctxt_group = \n' + str(ctxt_group)+ '\nr = \n' + str(r) + '\n'
         print 'Reading Data..'
-        filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat'
-        coverage, methylated = di.seq_prep(filename, None, s, ctxt_group);
-        N, x_zipped, a = di.triples_from_seq(coverage, methylated, 'explicit')
-        print 'coverage = ' + str(coverage) + '\nmethylated = ' + str(methylated) + '\n' #+ 'x_zipped = ' + x_zipped
+        coverage, methylated, N, x_zipped, a = di.data_prep_ctxt_ce(ctxt_group, ce_group, s, ch);
+        print 'r = ' + str(r)
+        print '#rows of coverage (should be r)' + str(np.shape(coverage)[0])
+        print 'coverage = \n' + str(coverage) + '\nmethylated = \n' + str(methylated) + '\n' #+ 'x_zipped = ' + x_zipped
 
         for l, l_test in itertools.product(lengths, lengths_test):
             print 'l = \n' + str(l) + '\nN = \n' + str(N) + '\na = \n' + str(a) + '\nl_test = \n' + str(l_test) + '\n'
@@ -40,6 +40,8 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt_gr
             x_importance_weighted = di.importance_weightify(x_zipped, l)
 
             print 'Preparing test data..'
+            if l_test is None:
+                l_test = np.shape(coverage)[1]
             coverage_test = coverage[:,:l_test]
             methylated_test = methylated[:,:l_test]
 
@@ -48,19 +50,26 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt_gr
                 print 'Constructing Moments..'
                 P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
 
-                print 'Estimating..'
-                vis.print_table_header(tex_name);
+                moments = {};
+                moments['p21'] = P_21;
+                moments['p31'] = P_31;
+                moments['P23'] = P_23;
+                moments['P13'] = P_13;
+                moments['P123'] = P_123;
+                mat_name = 'ch = ' + str(ch) + ' ce_group = ' + str(ce_group) + ' s = ' + str(s) + ' ctxt_group = ' + str(ctxt_group) + ' temp' + 'l = ' + str(l) + '.mat';
+                io.savemat(path_name + mat_name, moments)
 
+                print 'Estimating..'
+                sec_title = vis.get_sec_title(path_name, ce_group, ch, l, s, n, phi, ctxt_group)
+                vis.print_expt_setting(path_name, sec_title, tex_name)
+                vis.print_table_header(path_name, tex_name);
                 for m in ms:
                     C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
                     lims = fm.phi_lims(n, r);
                     p_ch = fm.get_pc(phi, N, C_h, a, lims)
 
                     print 'm = \n' + str(m) + '\nC_h = \n' + str(C_h) + '\nT_h = \n' + str(T_h) + '\npi_h = \n' + str(pi_h) + '\np_ch = \n' + str(p_ch) + '\n'
-
-                    fig_title = vis.get_fig_title(path_name, ce, ch, l, s, m, n, phi, ctxt_group)
-                    if m == min(ms):
-                        vis.print_expt_setting(fig_title, tex_name)
+                    fig_title = vis.get_fig_title(ce_group, ch, l, s, m, n, phi, ctxt_group)
 
                     p_x_h = lambda i: bh.p_x_ch_binom(p_ch, coverage_test, methylated_test, i)
 
@@ -68,7 +77,9 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt_gr
                     h_dec_p = hi.posterior_decode(l_test, pi_h, T_h, p_x_h);
                     color_scheme = vis.get_color_scheme(h_dec_p, m)
                     posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
-                    vis.browse_states(h_dec_p, posterior_title, color_scheme)
+                    bed_title = fig_title + 'l_test = ' + str(l_test) + '_bed'
+                    vis.browse_states(h_dec_p, path_name, posterior_title, color_scheme)
+                    vis.print_bed(h_dec_p, path_name, bed_title, m, ch)
                     #print 'viterbi decoding...'
                     #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
                     #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
@@ -76,8 +87,7 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt_gr
 
                     print 'generating feature map graph...'
                     feature_map_title = fig_title + '_feature_map.pdf'
-                    vis.print_feature_map(C_h, color_scheme, feature_map_title, lims)
-
+                    vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
 
                     #print 'printing matrices'
                     print T_h
@@ -96,11 +106,11 @@ def real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt_gr
                     #pi_title = fig_title + 'pi_h.pdf'
                     #vis.print_v(pi_h, pi_title)
 
-                    vis.print_fig_and(posterior_title,tex_name);
-                    vis.print_fig_bs(feature_map_title,tex_name);
+                    vis.print_fig_and(path_name, posterior_title,tex_name);
+                    vis.print_fig_bs(path_name, feature_map_title,tex_name);
 
-                vis.print_table_aheader(tex_name);
-    vis.print_doc_aheader(tex_name);
+                vis.print_table_aheader(path_name, tex_name);
+    vis.print_doc_aheader(path_name, tex_name);
 
 
 def synthetic_test_data(p, T, pi, N, l_test):
@@ -304,11 +314,12 @@ if __name__ == '__main__':
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
     #cells = ['E2', 'E1', 'E', 'V8', 'V9', 'V', 'P13P14', 'P15P16', 'P']
     #cells = ['E', 'V', 'P']
-    cells = ['E']
-    n = 40
-    ms = range(2, 7)
+    cell_groups = [['E', 'V', 'P']]
+    n = 60
+    ms = range(2, 4)
+    #order: CC, CT, CA, CG
     #ctxt_groups = [[range(0,4)], [range(4,8)], [range(8,12)], [range(12,16)], [range(0,4), range(4,8), range(8,12), range(12, 16)]]
-    ctxt_groups = [[range(0,16)]]
+    ctxt_groups = [[range(8,12), range(12,16)]]
     #ctxt_groups = [[range(0,4)]]
     #ctxt_groups = [[range(0,4), range(4,8), range(8,12), range(12, 16)]]
     '''
@@ -316,18 +327,18 @@ if __name__ == '__main__':
 
     '''
 
-    path_name = 'merge_ctxts'
+    path_name = 'merge_ctxts/'
     tex_name = 'result.tex'
     #segments = range(1, 6)
     #segments = range(1,5)
     segments = [1]
     lengths = [320000]
     #, 20000, 40000, 80000, 160000, 320000
-    lengths_test = [320000]
+    lengths_test = [None]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     #phis = [fm.phi_beta_shifted_cached]
     phis = [fm.phi_beta_shifted_cached_listify]
-    real_expt(phis, chrs, cells, segments, lengths, lengths_test, n, ms, ctxt_groups, 0, path_name, tex_name)
+    real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, ctxt_groups, 0, path_name, tex_name)
 
 
     '''
