@@ -2,6 +2,7 @@ import numpy as np
 import binom_hmm as bh
 from scipy import stats
 import time
+import postprocess as pp
 
 def cache_results(a_func):
     '''This decorator funcion binds a map between the tuple of arguments
@@ -228,7 +229,7 @@ def get_p(phi, N, C_h, a):
     #In multiple contexts case, we contatenate the feature representations. Therefore,
     #for extracting the parameters, we need to break them to respective contexts.
     #Important step: renormalize the feature maps
-    C_h = bh.postprocess_m(C_h);
+    C_h = pp.postprocess_m(C_h);
 
     if (phi == phi_onehot):
         p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
@@ -245,7 +246,7 @@ def get_p(phi, N, C_h, a):
     elif (phi == phi_binning or phi == phi_binning_cached or phi == phi_binning_cached_listify):
         p_h = np.sum(np.diag(bh.unif_partition(n-1)).dot(C_h[:-1,:]), axis = 0)
 
-    p_h = bh.proj_zeroone(p_h)
+    p_h = pp.proj_zeroone(p_h)
 
     return p_h
 

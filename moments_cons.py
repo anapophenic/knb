@@ -3,6 +3,8 @@ import tentopy
 import numerical_la as nla
 import feature_map as fm
 import binom_hmm as bh
+import postprocess as pp
+import visualize as vis
 
 def moments_cons(X, phi, N, n):
 
@@ -40,7 +42,6 @@ def moments_cons_importance_weighted(X_iw, phi, N, n):
 
     s = sum(X_iw.values());
     print len(X_iw)
-
 
     i = 0
     for X, importance_weight in X_iw.iteritems():
@@ -167,7 +168,6 @@ def estimate(P_21, P_31, P_23, P_13, P_123, m):
     print 'raw O_h = '
     print O_h
 
-    O_h = bh.postprocess_m(O_h)
 
     T_h = np.linalg.pinv(O_h).dot(P_21.dot(np.linalg.pinv(O_h.T)))
     print 'raw T_h = '
@@ -177,8 +177,23 @@ def estimate(P_21, P_31, P_23, P_13, P_123, m):
     print 'raw pi_h = '
     print pi_h
 
-    pi_h = bh.postprocess_v(pi_h)
-    T_h = bh.postprocess_m(T_h)
+    pi_h = pp.postprocess_v(pi_h)
+    T_h = pp.postprocess_m(T_h)
+
+    vis.show_T(T_h, 'T_'+str(m), 'merge_ctxts/')
+    vis.show_pi(pi_h, 'pi_'+str(m), 'merge_ctxts/')
+
+
+    T_h, pi_h = pp.recover_T_pi(P_21, O_h)
+
+    vis.show_T(T_h, 'T_p_'+str(m), 'merge_ctxts/')
+    vis.show_pi(pi_h, 'pi_p_'+str(m), 'merge_ctxts/')
+    
+
+    print T_h
+    print pi_h
+
+    O_h = pp.postprocess_m(O_h)
 
     return O_h, T_h, pi_h
 
@@ -187,6 +202,6 @@ def estimate_refine(C_h, P_21, phi, N, n, m, a):
     O_h = fm.get_O(phi, N, n, C_h, a)
     C_h_p = fm.gt_obs(phi, N, n, O_h)
     T_h_p = np.linalg.pinv(C_h_p).dot(P_21.dot(np.linalg.pinv(C_h_p.T)))
-    T_h_p = bh.postprocess_m(T_h_p)
+    T_h_p = pp.postprocess_m(T_h_p)
 
     return C_h_p, T_h_p

@@ -25,6 +25,7 @@ def forward_var(l, pi, T, p_x_h):
         else:
             alpha[:,i] = np.diag(p_x_h(i)).dot(T.dot(alpha[:,i-1]));
             ln_z[i] = ln_z[i-1] + np.log(np.sum(alpha[:,i]));
+
         #normalize(for numerical stability)
         alpha[:,i] = alpha[:,i] / np.sum(alpha[:,i])
         if ln_z[i] == np.nan:

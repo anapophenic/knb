@@ -4,6 +4,9 @@ import feature_map as fm
 import binom_hmm as bh
 import matplotlib.collections as collections
 import os
+import scipy.io as io
+import matplotlib.pylab as plt
+import matplotlib.patches as patches
 
 def directory_setup(path_name):
     try:
@@ -79,7 +82,8 @@ def print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims):
 
 def get_color_scheme(h, m):
     h = h.tolist()
-    colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
+    #colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
+    colors = [tuple(np.random.rand(3)) for i in range(m)]
     freq = [(i, h.count(i)) for i in xrange(m)]
     sorted_freq = sorted(freq, key=lambda x: x[1], reverse=True)
     color_scheme = {};
@@ -107,7 +111,7 @@ def browse_states(h, path_name, posterior_title, color_scheme):
     #for ax, i in zip(axes, xrange(l)):
     plt.close(fig)
 
-def print_bed(h, path_name, bed_title, m, ch):
+def print_bed(h, path_name, bed_title, m, ch, s):
     l = len(h);
 
     bed_list = []
@@ -117,19 +121,85 @@ def print_bed(h, path_name, bed_title, m, ch):
     for i in range(l):
         if (i == 0):
             i_start = 0
-        if (i == l-1):
-            bed_list[h[i]].append(("chr"+ch, i_start, i))
-        elif (h[i] != h[i-1]):
-            bed_list[h[i]].append(("chr"+ch, i_start, i-1))
+        elif (i == l-1 or h[i] != h[i-1]):
+            bed_list[h[i]].append(("chr"+ch, i_start*100*s, i*100*s))
             i_start = i
 
     for i in range(m):
         f = open(path_name + bed_title + str(i) + '.bed', 'w')
         for ch, i_start, i_end in bed_list[i]:
             #base pair
-            f.write(ch + '\t' + str(i_start*100) +'\t' + str(i_end*100) + '\n')
+            f.write(ch + '\t' + str(i_start) +'\t' + str(i_end) + '\n')
         f.close()
 
+    return bed_list
+
+def plot_bed(axarr, bed_list):
+    m = len(bed_list)
+    for i in range(m):
+        for j in range(len(bed_list[i])):
+            xstart = bed_list[i][j][1]
+            xsize = bed_list[i][j][2] - bed_list[i][j][1]
+            print xstart, xsize
+            #axarr[i].broken_barh([(xstart, xsize)], (0, 1), edgecolor=None)
+            axarr[i].add_patch(
+                patches.Rectangle(
+                    (xstart, 0),   # (x,y)
+                    xsize,          # width
+                    1,          # height
+                )
+)
+
+def plot_meth(axarr, coverage, methylated):
+    n_cells, l = np.shape(coverage)
+    for i in range(n_cells):
+        meth_rate = methylated[i,:] / coverage[i,:]
+        axarr[i].fill_between(range(0,l*100,100), meth_rate)
+        axarr[i].set_xlim([0, l*100])
+
+def plot_bed_only(bed_list):
+    m = len(bed_list)
+    f, axarr = plt.subplots(m, 1, sharex=True)
+    plot_bed(axarr, bed_list)
+    plt.show()
+
+def plot_meth_only(coverage, methylated):
+    n_cells = np.shape(coverage)[0]
+    f, axarr = plt.subplots(n_cells, 1, sharex=True)
+    plot_meth(axarr, coverage, methylated)
+    plt.show()
+
+def plot_m_and_c(coverage, methylated):
+    n_cells, l = np.shape(coverage)
+    f, axarr = plt.subplots(3*n_cells, 1, sharex=True)
+
+    for i in range(n_cells):
+        for j in range(l):
+            if coverage[i,j] == 0:
+                coverage[i,j] = 1
+        axarr[3*i].plot(range(0,l*100,100), coverage[i,:])
+        axarr[3*i+1].plot(range(0,l*100,100), methylated[i,:])
+        axarr[3*i+2].fill_between(range(0,l*100,100), methylated[i,:] / coverage[i,:])
+    plt.show()
+
+def plot_meth_and_bed(coverage, methylated, bed_list, path_name, l, l_test):
+    m = len(bed_list)
+    n_cells = np.shape(coverage)[0]
+    plt.figure()
+    # Get current size
+
+    fig_size = plt.rcParams["figure.figsize"]
+    fig_size[0] = 300
+    fig_size[1] = 20
+    plt.rcParams["figure.figsize"] = fig_size
+
+    fig, axarr = plt.subplots(n_cells+m, 1, sharex=True)
+    plt.hold(True)
+    plot_meth(axarr[:n_cells], coverage, methylated)
+    plot_bed(axarr[n_cells:n_cells+m], bed_list)
+    fig.savefig(path_name + 'contrast_m = ' + str(m) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test'+str(l_test))
+    plt.hold(False)
+    plt.close(fig)
 
 def print_doc_header(path_name, tex_name):
     f = open(path_name+tex_name, 'w')
@@ -178,6 +248,36 @@ def print_doc_aheader(path_name, tex_name):
     os.chdir(path_name)
     os.system("pdflatex "+tex_name)
     os.system("cd ..")
+
+def save_moments(P_21, P_31, P_23, P_13, P_123, ch, ce_group, s, ctxt_group, l, path_name):
+    moments = {};
+    moments['P21'] = P_21;
+    moments['P31'] = P_31;
+    moments['P23'] = P_23;
+    moments['P13'] = P_13;
+    moments['P123'] = P_123;
+    mat_name = 'ch = ' + str(ch) + ' ce_group = ' + str(ce_group) + ' s = ' + str(s) + ' ctxt_group = ' + str(ctxt_group) + ' temp' + 'l = ' + str(l) + '.mat';
+    io.savemat(path_name + mat_name, moments)
+
+def show_T(T, T_title, path_name):
+    plt.hold(True)
+    fig, ax = plt.subplots(1, 1)
+    plt.imshow(T, interpolation='nearest', cmap=plt.cm.ocean)
+    plt.colorbar()
+    plt.hold(False)
+    fig.savefig(path_name + T_title)
+    plt.close(fig)
+
+def show_pi(pi, pi_title, path_name):
+    m = np.shape(pi)[0];
+    pi_mat = pi.reshape((m,1))
+    plt.hold(True)
+    fig, ax = plt.subplots(1, 1)
+    plt.imshow(pi_mat, interpolation='nearest', cmap=plt.cm.ocean)
+    plt.colorbar()
+    plt.hold(False)
+    fig.savefig(path_name + pi_title)
+    plt.close(fig)
 
 if __name__ == '__main__':
 

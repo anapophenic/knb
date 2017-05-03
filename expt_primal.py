@@ -11,9 +11,6 @@ import visualize as vis
 import os
 import sys
 import itertools
-import scipy.io as io
-
-
 
 def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, ctxt_groups, bw_iters, path_name, tex_name):
 
@@ -42,22 +39,16 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
             print 'Preparing test data..'
             if l_test is None:
                 l_test = np.shape(coverage)[1]
-            coverage_test = coverage[:,:l_test]
-            methylated_test = methylated[:,:l_test]
+            coverage_test = coverage[:,:l_test].astype(float)
+            methylated_test = methylated[:,:l_test].astype(float)
+
+            #vis.plot_m_and_c(coverage_test, methylated_test)
 
             for phi in phis:
                 print 'phi = \n' + fm.phi_name(phi) + '\n'
                 print 'Constructing Moments..'
                 P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
-
-                moments = {};
-                moments['p21'] = P_21;
-                moments['p31'] = P_31;
-                moments['P23'] = P_23;
-                moments['P13'] = P_13;
-                moments['P123'] = P_123;
-                mat_name = 'ch = ' + str(ch) + ' ce_group = ' + str(ce_group) + ' s = ' + str(s) + ' ctxt_group = ' + str(ctxt_group) + ' temp' + 'l = ' + str(l) + '.mat';
-                io.savemat(path_name + mat_name, moments)
+                vis.save_moments(P_21, P_31, P_23, P_13, P_123, ch, ce_group, s, ctxt_group, l, path_name)
 
                 print 'Estimating..'
                 sec_title = vis.get_sec_title(path_name, ce_group, ch, l, s, n, phi, ctxt_group)
@@ -79,7 +70,8 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
                     bed_title = fig_title + 'l_test = ' + str(l_test) + '_bed'
                     vis.browse_states(h_dec_p, path_name, posterior_title, color_scheme)
-                    vis.print_bed(h_dec_p, path_name, bed_title, m, ch)
+                    bed_list = vis.print_bed(h_dec_p, path_name, bed_title, m, ch, s)
+                    vis.plot_meth_and_bed(coverage_test, methylated_test, bed_list, path_name, l, l_test)
                     #print 'viterbi decoding...'
                     #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
                     #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
@@ -314,14 +306,16 @@ if __name__ == '__main__':
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
     #cells = ['E2', 'E1', 'E', 'V8', 'V9', 'V', 'P13P14', 'P15P16', 'P']
     #cells = ['E', 'V', 'P']
-    cell_groups = [['E', 'V', 'P']]
-    n = 60
-    ms = range(2, 4)
+    cell_groups = [['E', 'V']]
+    # n should be divisible by cell_groups * ctxt_groups
+    n = 20
+    ms = range(2, 10)
     #order: CC, CT, CA, CG
     #ctxt_groups = [[range(0,4)], [range(4,8)], [range(8,12)], [range(12,16)], [range(0,4), range(4,8), range(8,12), range(12, 16)]]
-    ctxt_groups = [[range(8,12), range(12,16)]]
+    #ctxt_groups = [[range(8,12), range(12,16)]]
     #ctxt_groups = [[range(0,4)]]
     #ctxt_groups = [[range(0,4), range(4,8), range(8,12), range(12, 16)]]
+    ctxt_groups = [[range(12,16)]]
     '''
     Expt 1: Compare Binning Feature vs. Beta Feature
 
@@ -331,10 +325,10 @@ if __name__ == '__main__':
     tex_name = 'result.tex'
     #segments = range(1, 6)
     #segments = range(1,5)
-    segments = [1]
-    lengths = [320000]
+    segments = [10]
+    lengths = [20000]
     #, 20000, 40000, 80000, 160000, 320000
-    lengths_test = [None]
+    lengths_test = [10000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     #phis = [fm.phi_beta_shifted_cached]
     phis = [fm.phi_beta_shifted_cached_listify]

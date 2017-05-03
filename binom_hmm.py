@@ -4,65 +4,6 @@ from scipy import stats
 def unif_partition(n):
     return np.linspace(0.5/n, 1.0 - 0.5/n, n)
 
-#Need some sort of smoothing on the estimated probabilities
-def postprocess_m(M):
-    # first, determine the sign of the observations
-
-    s = np.diag(np.sign(np.sum(M, axis=0)))
-    M = M.dot(s)
-
-    # second, zero out those negative entries
-    M = M * (M > 0)
-
-    # then normalize all the entries
-    M = normalize_m(M);
-    M = make_positive_m(M);
-    M = normalize_m(M);
-
-    return M
-
-def postprocess_v(p):
-    s = np.sign(np.sum(p))
-    p = p * s;
-    p = p * (p > 0)
-
-    #normalize
-    p = normalize_v(p);
-    p = make_positive_v(p);
-    p = normalize_v(p);
-
-    return p
-
-def proj_zeroone(p):
-    m = np.shape(p)[0];
-    for i in range(m):
-        if p[i] > 0.99:
-            p[i] = 0.99
-        elif p[i] < 0.01:
-            p[i] = 0.01
-
-    return p
-
-def normalize_m(M):
-    return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
-
-def normalize_v(p):
-    return p / float(np.sum(p))
-
-def normalize_m_all(p):
-    return p / float(np.sum(p))
-
-#make the entries bounded away from zero
-def make_positive_v(p):
-    m = np.shape(p)[0];
-    p = p + 0.0001 * np.ones(m)
-    return p
-
-def make_positive_m(M):
-    n, m = np.shape(M);
-    M = M + 0.0001 * np.ones((n, m))
-    return M
-
 def get_O_binom(m, N, p):
     O = np.zeros((N+1, m));
 
@@ -133,6 +74,10 @@ def p_x_ch_binom(p_ch, coverage, methylated, i):
             #print '----------------'
             #print methylated[c,i], coverage[c,i], p_ch[c,j]
             O_x[j] = O_x[j] * stats.binom.pmf(methylated[c,i], coverage[c,i], p_ch[c,j])
+
+    # Sometimes it will return O with row zero. For robustness, we output [1,1,..,1].
+    if np.sum(O_x) == 0:
+        O_x = np.ones(m);
 
     return O_x
 
