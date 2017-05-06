@@ -1,5 +1,5 @@
 import numpy as np
-import binom_hmm as bh
+import utils as ut
 from scipy import stats
 import time
 import postprocess as pp
@@ -112,15 +112,12 @@ def phi_beta_shifted(x, N, n):
         Output:
             beta-distribution encoding of phi(x)
     '''
-    #print x
-    #print N
     i = int(x / (N+1));
     k = int(x) % (N+1);
     if k > i:
         return np.zeros(n)
 
-    #p = np.asarray(map(lambda t: (t ** k) * ( (1-t) ** (i - k) ), bh.unif_partition(n).tolist()));
-    p = np.asarray(map(lambda t: beta_interval(t, k, i-k, n), bh.unif_partition(n).tolist()));
+    p = np.asarray(map(lambda t: beta_interval(t, k, i-k, n), ut.unif_partition(n).tolist()));
 
     return p / sum(p);
 
@@ -135,11 +132,7 @@ def phi_beta(x, N, n):
         Output:
             beta-distribution encoding of phi(x)
     '''
-    #print x
-    #print N
-
-    #p = np.asarray(map(lambda t: (t ** x) * ( (1-t) ** (N-x) ), bh.unif_partition(n).tolist()));
-    p = np.asarray(map(lambda t: beta_interval(t, x, N-x, n), bh.unif_partition(n).tolist()));
+    p = np.asarray(map(lambda t: beta_interval(t, x, N-x, n), ut.unif_partition(n).tolist()));
     return p / sum(p);
 
 def phi_onehot(x, N, n):
@@ -174,11 +167,6 @@ def gt_obs(phi, N, n, O):
         Trans = np.zeros((n, (N+1)*(N+1)));
         for x in xrange((N+1)*(N+1)):
             Trans[:,x] = phi(x, N, n).T
-
-    #print 'Trans = '
-    #print Trans
-    #print 'O = '
-    #print O
 
     O_m = Trans.dot(O);
     return O_m;
@@ -234,17 +222,13 @@ def get_p(phi, N, C_h, a):
     if (phi == phi_onehot):
         p_h = np.sum(np.diag(np.linspace(0,N,N+1)).dot(C_h), axis = 0) / N
     elif (phi == phi_beta):
-        p_h = ((N+1) * np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0) - 1) / N
+        p_h = ((N+1) * np.sum(np.diag(ut.unif_partition(n)).dot(C_h), axis = 0) - 1) / N
     elif (phi == phi_beta_shifted or phi == phi_beta_shifted_cached or phi == phi_beta_shifted_cached_listify):
-        p_h = (np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
-        #print np.sum(C_h, axis = 0)
-        #print np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0)
-        #print a
-        #print p_h
+        p_h = (np.sum(np.diag(ut.unif_partition(n)).dot(C_h), axis = 0) - a) / (1 - 2*a)
     elif (phi == phi_binning_igz or phi == phi_binning_igz_cached or phi == phi_binning_igz_cached_listify):
-        p_h = np.sum(np.diag(bh.unif_partition(n)).dot(C_h), axis = 0)
+        p_h = np.sum(np.diag(ut.unif_partition(n)).dot(C_h), axis = 0)
     elif (phi == phi_binning or phi == phi_binning_cached or phi == phi_binning_cached_listify):
-        p_h = np.sum(np.diag(bh.unif_partition(n-1)).dot(C_h[:-1,:]), axis = 0)
+        p_h = np.sum(np.diag(ut.unif_partition(n-1)).dot(C_h[:-1,:]), axis = 0)
 
     p_h = pp.proj_zeroone(p_h)
 

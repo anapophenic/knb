@@ -6,10 +6,14 @@ from scipy.optimize import linear_sum_assignment
 import matplotlib.pyplot as plt
 import scipy.io as io
 import itertools
+import cvxpy as cvx
+import visualize as vis
+import postprocess as pp
+import td_tpm
 
 
-def prod(iterable):
-    return reduce(operator.mul, iterable, 1)
+def prod(arr):
+    return reduce(operator.mul, arr, 1)
 
 def khatri_rao(As):
     k = np.shape(As[0])[1]
@@ -73,48 +77,6 @@ def residual(T, As):
 def rel_err(T, As):
     return pow(residual(T, As) / np.linalg.norm(T), 2.0)
 
-
-def als(T, k, lam, tol, max_iter=1000):
-    dims = np.shape(T)
-    r = len(dims)
-    lam = lam + 1e-3 * np.ones(r)
-    As = rand_init(r, dims, k)
-
-    for it in range(max_iter):
-        for i in range(r):
-            #deep copy
-            As = regularized_iter_noref(T, As, lam, i)
-            #Note that if we normalize lazily (in the outer loop) if often gives numerically unstable solutions.
-        if rel_err(T, As) < tol:
-            break
-
-    w = get_w(T, As)
-
-    return w, As
-
-#Let us first assume T_1 and T_2 are of the same dimension
-def co_regularized_als(T_1, T_2, k, lam, tol, max_iter=1000):
-    dims = np.shape(T_1)
-    r = len(dims)
-    lam = lam + 1e-3 * np.ones(r)
-
-    As_1 = rand_init(r, dims, k)
-    As_2 = rand_init(r, dims, k)
-
-    for it in range(max_iter):
-
-        for i in range(r):
-            As_1 = regularized_iter(T_1, As_1, As_2[i], lam[i], i)
-            As_2 = regularized_iter(T_2, As_2, As_1[i], lam[i], i)
-
-        if rel_err(T_1, As_1) < tol and rel_err(T_2, As_2) < tol:
-            break
-
-    w_1 = get_w(T_1, As_1)
-    w_2 = get_w(T_2, As_2)
-
-    return w_1, As_1, w_2, As_2
-
 def triple_eye(k):
   T = np.zeros((k,k,k))
 
@@ -168,12 +130,85 @@ def data_gen(N, k, alpha, r):
     return T_1, T_2
 
 def data_gen_real(filename):
-    mats = io.loadmat(filename)
-    T_all = mats['P123']
-    T_1 = T_all[:10, :10, :10]
-    T_2 = T_all[10:20, 10:20, 10:20]
-    return T_1, T_2
+    P_21, P_31, P_23, P_13, P_123 = vis.load_moments(filename)
 
+    P_21_1 = P_21[:10, :10]
+    P_21_2 = P_21[10:20, 10:20]
+
+    P_31_1 = P_31[:10, :10]
+    P_31_2 = P_31[10:20, 10:20]
+
+    P_23_1 = P_23[:10, :10]
+    P_23_2 = P_23[10:20, 10:20]
+
+    P_13_1 = P_13[:10, :10]
+    P_13_2 = P_13[10:20, 10:20]
+
+    P_123_1 = P_123[:10, :10, :10]
+    P_123_2 = P_123[10:20, 10:20, 10:20]
+
+    return P_21_1, P_31_1, P_23_1, P_13_1, P_123_1, P_21_2, P_31_2, P_23_2, P_13_2, P_123_2
+
+def plot_error(ls, errs, k, lam, type):
+    fig, ax = plt.subplots(1, 1)
+    ax.semilogx(ls, errs)
+    ax.grid(True)
+    ax.set_title('Reconstruction Error, k = ' + str(k) + '_lambda=' + str(lam))
+
+    plt.show(block=False)
+
+    if type == 'synthetic':
+        fig.savefig('Synthetic_k=' + str(k) + '_i='+ str(i))
+    else:
+        fig.savefig('Real_k=' + str(k) + '_i='+ str(i))
+
+    plt.close('all')
+
+
+'''
+If we normalize lazily (in the outer loop), it often gives numerically unstable solutions.
+'''
+def als(T, k, lam, tol, max_iter=1000):
+    dims = np.shape(T)
+    r = len(dims)
+    lam = lam + 1e-3 * np.ones(r)
+    As = rand_init(r, dims, k)
+
+    for it in range(max_iter):
+        for i in range(r):
+            #deep copy
+            As = regularized_iter_noref(T, As, lam, i)
+
+        if rel_err(T, As) < tol:
+            break
+
+    w = get_w(T, As)
+
+    return w, As
+'''
+Let us first assume T_1 and T_2 are of the same dimension
+'''
+def co_regularized_als(T_1, T_2, k, lam, tol, max_iter=1000):
+    dims = np.shape(T_1)
+    r = len(dims)
+    lam = lam + 1e-3 * np.ones(r)
+
+    As_1 = rand_init(r, dims, k)
+    As_2 = rand_init(r, dims, k)
+
+    for it in range(max_iter):
+
+        for i in range(r):
+            As_1 = regularized_iter(T_1, As_1, As_2[i], lam[i], i)
+            As_2 = regularized_iter(T_2, As_2, As_1[i], lam[i], i)
+
+        if rel_err(T_1, As_1) < tol and rel_err(T_2, As_2) < tol:
+            break
+
+    w_1 = get_w(T_1, As_1)
+    w_2 = get_w(T_2, As_2)
+
+    return w_1, As_1, w_2, As_2
 
 if __name__ == '__main__':
     '''
@@ -184,39 +219,46 @@ if __name__ == '__main__':
     '''
     Instance Generation
     '''
+    #T_1, T_2 = data_gen(N, k, alpha, r)
 
     filename = 'input_tensor.mat'
-    T_1, T_2 = data_gen_real(filename)
+    P_21_1, P_31_1, P_23_1, P_13_1, P_123_1, P_21_2, P_31_2, P_23_2, P_13_2, P_123_2 = data_gen_real(filename)
+    N = np.shape(P_123_1)[0]
 
-    #for i, k in itertools.product(range(20), range(1,8)):
-    #T_1, T_2 = data_gen(N, k, alpha, r)
-    for k in range(1,8):
-        #alpha = 0.1*i
+    ls = [pow(2,z) for z in range(-15, -14)]
+    ks = range(1,8)
+    errs = []
+    lims = [0, N]
 
-        '''
-        Evaluation
-        '''
-        ls = [pow(1.2,z) for z in range(-150, 50)]
-        errs = []
-        for l in ls:
-            # co-regularze on dimension 2
-            lam = np.zeros(r)
-            lam[1] = l;
-            w_1, As_1, w_2, As_2 = co_regularized_als(T_1, T_2, k, lam, tol)
-            #err_1 = error_eval(As_1[1], Cs_1[1])
-            #err_2 = error_eval(As_2[1], Cs_2[1])
-            err_3 = error_eval_tensor(w_1, As_1, T_1, w_2, As_2, T_2)
-            errs.append(err_3)
+    for k, l in itertools.product(ks, ls):
 
-        fig, ax = plt.subplots(1, 1)
-        ax.semilogx(ls, errs)
-        ax.grid(True)
-        #ax.set_title('Reconstruction Error ||T - T_h||_F, k = ' + str(k) + '_i=' + str(i))
-        ax.set_title('Reconstruction Error ||T - T_h||_F, k = ' + str(k))
-        plt.show(block=False)
-        fig.savefig('Real_k=' + str(k))
-        #fig.savefig('Synthetic_k=' + str(k) + '_i='+ str(i))
-        plt.close('all')
+        # co-regularze on dimension 2
+        lam = np.zeros(r)
+        lam[1] = l;
+        w_1, As_1, w_2, As_2 = co_regularized_als(P_123_1, P_123_2, k, lam, tol)
+        #err_1 = error_eval(As_1[1], Cs_1[1])
+        #err_2 = error_eval(As_2[1], Cs_2[1])
+        err_3 = error_eval_tensor(w_1, As_1, P_123_1, w_2, As_2, P_123_2)
+        errs.append(err_3)
+
+        color_scheme = vis.default_color_scheme(k)
+        As_1[1] = pp.postprocess_m(As_1[1])
+
+        vis.print_feature_map(As_1[1], color_scheme, 'co_regularize/', 'k =' + str(k) + 'lambda = ' + str(l) + '_feature_map.pdf', lims)
+
+        O_avg, H_21 = pp.refine_als_p21(P_21_1, As_1[1])
+
+        print H_21
+        print O_avg
+
+        vis.print_feature_map(O_avg, color_scheme, 'co_regularize/', 'k =' + str(k) + 'lambda = ' + str(l) + '_feature_map_refined.pdf', lims)
+
+        O_tpm = td_tpm.tpm(P_21_1, P_31_1, P_23_1, P_13_1, P_123_1, k)
+        O_tpm = pp.postprocess_m(O_tpm)
+
+        vis.print_feature_map(O_tpm, color_scheme, 'co_regularize/', 'k =' + str(k) + 'lambda = ' + str(l) + '_feature_map_tpm.pdf', lims)
+
+    plot_error(ls, errs, k)
 
     '''
     T_h = nla.fast_trilinear(core, As[0].T, As[1].T, As[2].T)

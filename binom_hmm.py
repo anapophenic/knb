@@ -1,9 +1,6 @@
 import numpy as np
 from scipy import stats
 
-def unif_partition(n):
-    return np.linspace(0.5/n, 1.0 - 0.5/n, n)
-
 def get_O_binom(m, N, p):
     O = np.zeros((N+1, m));
 

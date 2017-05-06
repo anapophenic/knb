@@ -7,6 +7,7 @@ import os
 import scipy.io as io
 import matplotlib.pylab as plt
 import matplotlib.patches as patches
+import utils as ut
 
 def directory_setup(path_name):
     try:
@@ -23,7 +24,6 @@ def print_v(p, vec_title):
     print_m(np.array([p.tolist()]), vec_title)
 
 def print_m(M, mat_title):
-    #M = np.random.random((10,10))
     fig = plt.figure(1)
     plt.matshow(M, interpolation='nearest', cmap=plt.cm.Spectral)
     fig.savefig(mat_title)
@@ -72,13 +72,12 @@ def print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims):
             #print i
             #print C_h[lims[j]:lims[j+1],i]
             #print color_scheme[i]
-            plt.plot(bh.unif_partition(lims[j+1]-lims[j]), C_h[lims[j]:lims[j+1],i], color=color_scheme[i], linewidth=3)
+            plt.plot(ut.unif_partition(lims[j+1]-lims[j]), C_h[lims[j]:lims[j+1],i], color=color_scheme[i], linewidth=3)
 
     fig.savefig(path_name + feature_map_title)
     # save the figure to file
     plt.hold(False)
     plt.close(fig)
-    #print 'Refining using Binomial Knowledge'
 
 def get_color_scheme(h, m):
     h = h.tolist()
@@ -91,6 +90,10 @@ def get_color_scheme(h, m):
         color_scheme[sorted_freq[i][0]] = colors[i]
 
     return color_scheme
+
+def default_color_scheme(m):
+    colors = [tuple(np.random.rand(3)) for i in range(m)]
+    return {i:colors[i] for i in range(m)}
 
 
 def browse_states(h, path_name, posterior_title, color_scheme):
@@ -142,13 +145,7 @@ def plot_bed(axarr, bed_list):
             xsize = bed_list[i][j][2] - bed_list[i][j][1]
             print xstart, xsize
             #axarr[i].broken_barh([(xstart, xsize)], (0, 1), edgecolor=None)
-            axarr[i].add_patch(
-                patches.Rectangle(
-                    (xstart, 0),   # (x,y)
-                    xsize,          # width
-                    1,          # height
-                )
-)
+            axarr[i].add_patch(patches.Rectangle((xstart, 0), xsize, 1))
 
 def plot_meth(axarr, coverage, methylated):
     n_cells, l = np.shape(coverage)
@@ -258,6 +255,16 @@ def save_moments(P_21, P_31, P_23, P_13, P_123, ch, ce_group, s, ctxt_group, l, 
     moments['P123'] = P_123;
     mat_name = 'ch = ' + str(ch) + ' ce_group = ' + str(ce_group) + ' s = ' + str(s) + ' ctxt_group = ' + str(ctxt_group) + ' temp' + 'l = ' + str(l) + '.mat';
     io.savemat(path_name + mat_name, moments)
+
+def load_moments(filename):
+    moments = io.loadmat(filename)
+    P_21 = moments['P21'];
+    P_31 = moments['P31'];
+    P_23 = moments['P23'];
+    P_13 = moments['P13'];
+    P_123 = moments['P123'];
+    return P_21, P_31, P_23, P_13, P_123
+
 
 def show_T(T, T_title, path_name):
     plt.hold(True)

@@ -1,6 +1,6 @@
 #!/usr/bin/env/python
 """
-linalg.py
+tentopy.py
 
 Linear algebra tools for orthogonal tensor decompositions.
 
@@ -30,7 +30,7 @@ def reconstruct(W, X3, L=25, N=20):
   evecs_rec = [np.linalg.solve(W.T, e * evecs[k, :]) for k, e in enumerate(evals)]
   # now in reverse order
   return evals_rec[::-1], np.array(evecs_rec[::-1])
-  
+
 
 def whiten(M2, M3):
   """ Form the pseudo-whitening matrix of M2 and apply to M3 to form \tilde{M3}.
@@ -40,14 +40,14 @@ def whiten(M2, M3):
   inputs:
   M2: the second-order moment matrix
   M3: the third-order moment matrix
-  
+
   outputs:
   W: the pseudo-whitening matrix
   \tilde{M3}: M3(W, W, W)
   """
-  
+
   evals, evecs = np.linalg.eig(M2)
-  
+
   wp = np.diag([1 / math.sqrt(max(abs(w), 10e-12)) for w in evals])
   W = np.dot(evecs, wp)
 
@@ -71,11 +71,11 @@ def whiten(M2, M3):
 def approx_eval(T, v):
   """ Compute the approximate eigenvalue corresponding to an approximate
   eigenvector.
-  
+
   inputs:
   T: a super symmetric tensor
   v: an approximate eigenvalue
-  
+
   output:
    approximate eigenvalue T(v, v, v)
   """
@@ -83,7 +83,7 @@ def approx_eval(T, v):
 
 def tensor_outer(v, n):
   """ Compute a rank-1 order-n (n > 1) tensor computation by outer products.
-  
+
   input: v the basis vector
   output: \otimes^3 v
   """
@@ -95,12 +95,12 @@ def tensor_outer(v, n):
 def power_method(T, L, N, norm_type=2):
   """ Main power method driver.  Computes the (eigenvalue, eigenvector) pair
   of a tensor corresponding to the largest eigenvalue.
-  
+
   inputs:
   T: a super-symmetric tensor
   L: number of inner iterations of power method to perform
   N: number of iterations per inner iteration
-  
+
   outputs:
   a tuple:
       (approximate largest eigenvalue, corresponding eigenvector,

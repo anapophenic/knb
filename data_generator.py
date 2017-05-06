@@ -1,11 +1,11 @@
 import numpy as np
 import scipy
-import binom_hmm as bh
+import utils as ut
 
 def generate_p(m):
     #p = np.asarray([0,0.5,1])
     #p = np.asarray([0.3,0.7])
-    p = np.asarray(bh.unif_partition(m));
+    p = np.asarray(ut.unif_partition(m));
     #print p
     return p
 
@@ -33,7 +33,7 @@ def generate_T(m, min_sigma_t):
     #T = np.asarray([[0.8, 0.2], [0.2, 0.8]])
 
     T = min_sigma_t * np.eye(m) + (1 - min_sigma_t) * np.random.random((m, m))
-    return bh.normalize_m(T)
+    return ut.normalize_m(T)
 
 def generate_pi(m):
     #pi = dataGenerator.makeDistribution(m)
@@ -45,7 +45,7 @@ def generate_pi(m):
 
 def generate_O(m, n, min_sigma_o):
     O = min_sigma_o * np.eye(n,m) + (1 - min_sigma_o) * np.random.random((n, m))
-    return bh.normalize_m(O)
+    return ut.normalize_m(O)
 
 def draw_categorical(values, probabilities):
     bins = np.add.accumulate(probabilities)

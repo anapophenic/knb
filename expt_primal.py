@@ -11,6 +11,8 @@ import visualize as vis
 import os
 import sys
 import itertools
+import td_tpm
+import postprocess as pp
 
 def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, ctxt_groups, bw_iters, path_name, tex_name):
 
@@ -55,7 +57,10 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                 vis.print_expt_setting(path_name, sec_title, tex_name)
                 vis.print_table_header(path_name, tex_name);
                 for m in ms:
-                    C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
+                    C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m)
+                    C_h = pp.postprocess_m(C_h)
+                    C_h, T_h, pi_h = pp.refine_positify(C_h, P_21, P_31, P_23, P_13, P_123, m)
+
                     lims = fm.phi_lims(n, r);
                     p_ch = fm.get_pc(phi, N, C_h, a, lims)
 
@@ -136,9 +141,9 @@ def synthetic_expt(phi, path_name):
 
     #sys.stdout = open(path_name+'/parameters.txt', 'w+');
 
-    n = 40
+    n = 30
     N = 40
-    l = 60000
+    l = 6000
     min_sigma_t = 0.8
     #min_sigma_o = 0.95
     #n = 3;
@@ -161,7 +166,7 @@ def synthetic_expt(phi, path_name):
     #print O
 
     m = 6;
-    r = 8;
+    r = 3;
 
     p_N = dg.generate_p_N(N);
     print 'p_N = '
@@ -201,7 +206,10 @@ def synthetic_expt(phi, path_name):
 
     for m_hat in range(6,7,1):
 
-        C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m_hat)
+        C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m)
+        C_h = pp.postprocess_m(C_h)
+        C_h, T_h, pi_h = pp.refine_positify(C_h, P_21, P_31, P_23, P_13, P_123, m)
+
         lims = fm.phi_lims(n, r);
         p_ch_h = fm.get_pc(phi, N, C_h, a, lims)
 
@@ -216,15 +224,15 @@ def synthetic_expt(phi, path_name):
         h_dec_p = hi.posterior_decode(l_test, pi, T, p_x_h);
         color_scheme = vis.get_color_scheme(h_dec_p, m_hat)
         posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
-        vis.browse_states(h_dec_p, posterior_title, color_scheme)
+        vis.browse_states(h_dec_p, path_name, posterior_title, color_scheme)
 
         # estimated decoder
         p_x_h_h = lambda i: bh.p_x_ch_binom(p_ch_h, coverage_test, methylated_test, i)
         h_dec_p_h = hi.posterior_decode(l_test, pi_h, T_h, p_x_h_h);
         posterior_h_title = fig_title + 'l_test = ' + str(l_test) + '_posterior_h.pdf'
-        vis.browse_states(h_dec_p, posterior_h_title, color_scheme)
+        vis.browse_states(h_dec_p, path_name, posterior_h_title, color_scheme)
 
-        vis.browse_states(h_test, 'gt l_test = ' + str(l_test) + '.pdf', color_scheme)
+        vis.browse_states(h_test, path_name, 'gt l_test = ' + str(l_test) + '.pdf', color_scheme)
         #print 'viterbi decoding...'
         #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
         #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
@@ -232,7 +240,7 @@ def synthetic_expt(phi, path_name):
 
         print 'generating feature map graph...'
         feature_map_title = fig_title + '_feature_map.pdf'
-        vis.print_feature_map(C_h, color_scheme, feature_map_title, lims)
+        vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
 
 
         #print 'printing matrices'
@@ -297,7 +305,7 @@ if __name__ == '__main__':
     #path_name = 'synthetic/1026'
     #synthetic_expt(fm.phi_beta_shifted_cached, 3, path_name);
 
-
+    '''
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
     #chrs.append('Y')
@@ -317,23 +325,24 @@ if __name__ == '__main__':
     #ctxt_groups = [[range(0,4), range(4,8), range(8,12), range(12, 16)]]
     ctxt_groups = [[range(12,16)]]
     '''
+    '''
     Expt 1: Compare Binning Feature vs. Beta Feature
 
     '''
-
+    '''
     path_name = 'merge_ctxts/'
     tex_name = 'result.tex'
     #segments = range(1, 6)
     #segments = range(1,5)
-    segments = [10]
-    lengths = [20000]
+    segments = [1]
+    lengths = [40000]
     #, 20000, 40000, 80000, 160000, 320000
     lengths_test = [10000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     #phis = [fm.phi_beta_shifted_cached]
     phis = [fm.phi_beta_shifted_cached_listify]
     real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, ctxt_groups, 0, path_name, tex_name)
-
+    '''
 
     '''
     Expt 2: Vary the number of Segments
@@ -351,9 +360,8 @@ if __name__ == '__main__':
     '''
     Expt 3: Synthetic dataset
     '''
-    '''
+
     phi = fm.phi_beta_shifted_cached_listify;
     path_name = 'synthetic'
 
     synthetic_expt(phi, path_name)
-    '''
