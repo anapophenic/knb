@@ -1,6 +1,7 @@
 import numpy as np
 import scipy
 import utils as ut
+import itertools
 
 def generate_p(m):
     #p = np.asarray([0,0.5,1])
@@ -9,10 +10,37 @@ def generate_p(m):
     #print p
     return p
 
-def generate_p_ch(m, r):
+def generate_p_ch_monotone(m, r):
     p_ch = np.zeros((r, m));
     for c in range(r):
         p_ch[c,:] = generate_p(m);
+
+    return p_ch
+
+def generate_p_ch_cartesian(ms):
+    ranges = [range(m) for m in ms]
+    cp = list(itertools.product(*ranges))
+    ps = [generate_p(m) for m in ms]
+    r = len(ms)
+    m = ut.prod(ms)
+
+    p_ch = np.zeros((r, m));
+
+    print cp
+
+    i = 0;
+    for tuples in cp:
+        for c in range(r):
+            p_ch[c,i] = ps[c][tuples[c]];
+        i += 1
+
+    return p_ch
+
+def generate_p_ch_random(ms):
+    m = ut.prod(ms)
+    r = len(ms)
+
+    p_ch = np.random.rand(r, m);
 
     return p_ch
 

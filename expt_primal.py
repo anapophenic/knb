@@ -12,7 +12,9 @@ import os
 import sys
 import itertools
 import td_tpm
+import td_als
 import postprocess as pp
+import utils as ut
 
 def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, ctxt_groups, bw_iters, path_name, tex_name):
 
@@ -57,6 +59,7 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                 vis.print_expt_setting(path_name, sec_title, tex_name)
                 vis.print_table_header(path_name, tex_name);
                 for m in ms:
+                    #C_h = td_als.als(P_123, m)
                     C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m)
                     C_h = pp.postprocess_m(C_h)
                     C_h, T_h, pi_h = pp.refine_positify(C_h, P_21, P_31, P_23, P_13, P_123, m)
@@ -76,7 +79,8 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     bed_title = fig_title + 'l_test = ' + str(l_test) + '_bed'
                     vis.browse_states(h_dec_p, path_name, posterior_title, color_scheme)
                     bed_list = vis.print_bed(h_dec_p, path_name, bed_title, m, ch, s)
-                    vis.plot_meth_and_bed(coverage_test, methylated_test, bed_list, path_name, l, l_test)
+                    bed_name = fig_title
+                    vis.plot_meth_and_bed(coverage_test, methylated_test, bed_list, p_ch, bed_name, path_name, l, l_test)
                     #print 'viterbi decoding...'
                     #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
                     #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
@@ -142,8 +146,8 @@ def synthetic_expt(phi, path_name):
     #sys.stdout = open(path_name+'/parameters.txt', 'w+');
 
     n = 30
-    N = 40
-    l = 6000
+    N = 100
+    l = 60000
     min_sigma_t = 0.8
     #min_sigma_o = 0.95
     #n = 3;
@@ -165,14 +169,18 @@ def synthetic_expt(phi, path_name):
     #print 'O = '
     #print O
 
-    m = 6;
-    r = 3;
+    r = 2
+    ms = [2 for i in range(r)]
+    print ms
+    m = ut.prod(ms)
 
     p_N = dg.generate_p_N(N);
     print 'p_N = '
     print p_N
 
-    p_ch = dg.generate_p_ch(m, r);
+    #p_ch = dg.generate_p_ch_random(ms);
+    p_ch = dg.generate_p_ch_cartesian(ms);
+    #p_ch = dg.generate_p_ch_monotone(m,r);
     print 'p_ch = '
     print p_ch
 
@@ -183,6 +191,9 @@ def synthetic_expt(phi, path_name):
     pi = dg.generate_pi(m);
     print 'pi = '
     print pi
+
+    #generate_O
+
 
     l_test = 500;
     #x_test, h_test = synthetic_test_data(p, T, pi, N, l_test);
@@ -204,42 +215,71 @@ def synthetic_expt(phi, path_name):
     #print 'C = '
     #print C
 
-    for m_hat in range(6,7,1):
+    # ground truth states
+    #vis.browse_states(h_test, path_name, 'gt l_test = ' + str(l_test) + '.pdf', color_scheme)
+    bed_name_gts = 'gt_states'
+    bed_list_gts = vis.print_bed(h_test, path_name, bed_name_gts, m, '1', 1)
+    vis.plot_meth_and_bed(coverage_test, methylated_test, bed_list_gts, p_ch, bed_name_gts, path_name, l, l_test)
 
-        C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m)
+    # ground truth decoder
+    #posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
+    #vis.browse_states(h_dec_p, path_name, posterior_title, color_scheme)
+    #color_scheme = vis.get_color_scheme(h_dec_p, m)
+    p_x_h = lambda i: bh.p_x_ch_binom(p_ch, coverage_test, methylated_test, i)
+    h_dec_p = hi.posterior_decode(l_test, pi, T, p_x_h);
+    bed_name_gtd = 'gt_decoder'
+    bed_list_gtd = vis.print_bed(h_dec_p, path_name, bed_name_gtd, m, '1', 1)
+    #vis.plot_meth_and_bed(coverage_test, methylated_test, bed_list_gtd, bed_name_gtd, path_name, l, l_test)
+    vis.plot_meth_and_twobeds(coverage_test, methylated_test, bed_list_gts, p_ch, bed_list_gtd, p_ch, bed_name_gtd, path_name, l, l_test)
+
+
+    for m_hat in range(4,5,1):
+
+        #C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m_hat)
+        C_h = td_als.als(P_123, m_hat)
         C_h = pp.postprocess_m(C_h)
-        C_h, T_h, pi_h = pp.refine_positify(C_h, P_21, P_31, P_23, P_13, P_123, m)
+        C_h, T_h, pi_h = pp.refine_positify(C_h, P_21, P_31, P_23, P_13, P_123, m_hat)
+        #T_h, pi_h = pp.refine_nmf(P_21, C_h)
 
         lims = fm.phi_lims(n, r);
         p_ch_h = fm.get_pc(phi, N, C_h, a, lims)
 
+        col_ind = ut.find_match(p_ch, p_ch_h)
+        pi_h = pi_h[col_ind]
+        p_ch_h = p_ch_h[:,col_ind]
+        T_h = T_h[:, col_ind][col_ind, :]
+        C_h = C_h[:, col_ind]
+
+
+        print T_h
+
         print 'm_hat = \n' + str(m) + '\nC_h = \n' + str(C_h) + '\nT_h = \n' + str(T_h) + '\npi_h = \n' + str(pi_h) + '\np_ch_h = \n' + str(p_ch_h) + '\n'
+        print 'p_ch_h - p_ch', np.linalg.norm(p_ch_h - p_ch)
+        print 'T_h - T', np.linalg.norm(T_h - T)
+        print 'pi_h - pi', np.linalg.norm(pi_h - pi)
 
         fig_title = 'synthetic'
 
         print 'posterior decoding...'
 
-        # ground truth decoder
-        p_x_h = lambda i: bh.p_x_ch_binom(p_ch, coverage_test, methylated_test, i)
-        h_dec_p = hi.posterior_decode(l_test, pi, T, p_x_h);
-        color_scheme = vis.get_color_scheme(h_dec_p, m_hat)
-        posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
-        vis.browse_states(h_dec_p, path_name, posterior_title, color_scheme)
-
         # estimated decoder
         p_x_h_h = lambda i: bh.p_x_ch_binom(p_ch_h, coverage_test, methylated_test, i)
         h_dec_p_h = hi.posterior_decode(l_test, pi_h, T_h, p_x_h_h);
         posterior_h_title = fig_title + 'l_test = ' + str(l_test) + '_posterior_h.pdf'
-        vis.browse_states(h_dec_p, path_name, posterior_h_title, color_scheme)
+        #vis.browse_states(h_dec_p, path_name, posterior_h_title, color_scheme)
+        bed_name_ed = 'estimated_decoder'
+        bed_list_ed = vis.print_bed(h_dec_p_h, path_name, bed_name_ed, m_hat, '1', 1)
+        #vis.plot_meth_and_bed(coverage_test, methylated_test, bed_list_ed, bed_name_ed, path_name, l, l_test)
+        vis.plot_meth_and_twobeds(coverage_test, methylated_test, bed_list_gts, p_ch, bed_list_ed, p_ch_h, bed_name_ed, path_name, l, l_test)
 
-        vis.browse_states(h_test, path_name, 'gt l_test = ' + str(l_test) + '.pdf', color_scheme)
         #print 'viterbi decoding...'
         #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
         #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
         #vis.browse_states(h_dec_v, viterbi_title, color_scheme)
 
         print 'generating feature map graph...'
-        feature_map_title = fig_title + '_feature_map.pdf'
+        color_scheme = vis.get_color_scheme(h_dec_p, m_hat)
+        feature_map_title = fig_title + 'l = ' + str(l) + 'm_hat = ' + str(m_hat) + '_feature_map.pdf'
         vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
 
 
@@ -314,7 +354,8 @@ if __name__ == '__main__':
     #cells = ['E1', 'E2', 'V8', 'V9', 'P13P14', 'P15P16']
     #cells = ['E2', 'E1', 'E', 'V8', 'V9', 'V', 'P13P14', 'P15P16', 'P']
     #cells = ['E', 'V', 'P']
-    cell_groups = [['E', 'V']]
+    #cell_groups = [['E', 'V']]
+    cell_groups = [['E']]
     # n should be divisible by cell_groups * ctxt_groups
     n = 20
     ms = range(2, 10)
@@ -334,7 +375,7 @@ if __name__ == '__main__':
     tex_name = 'result.tex'
     #segments = range(1, 6)
     #segments = range(1,5)
-    segments = [1]
+    segments = [10]
     lengths = [40000]
     #, 20000, 40000, 80000, 160000, 320000
     lengths_test = [10000]
@@ -362,6 +403,6 @@ if __name__ == '__main__':
     '''
 
     phi = fm.phi_beta_shifted_cached_listify;
-    path_name = 'synthetic'
+    path_name = 'synthetic_cartesian/'
 
     synthetic_expt(phi, path_name)

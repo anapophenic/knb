@@ -40,6 +40,8 @@ def seq_prep_ctxt(ce, ch, l=None, s=1, ctxt_group=[range(16)]):
     r = len(ctxt_group)
     l, dim = np.shape(coverage)
 
+    print l, dim
+
     #vertical_groups = [xrange(i*s,(i+1)*s) for i in range(l/s)]
     #coverage_h = np.array([group_vertical(coverage, vertical_groups[j]) for j in range(l/s)])
     #methylated_h = np.array([group_vertical(methylated, vertical_groups[j]) for j in range(l/s)])
@@ -67,14 +69,15 @@ def seq_prep_ctxt_ce(ce_group, ch, l=None, s=1, ctxt_group=[range(16)]):
     l_min = 100000000;
     for coverage in coverage_list:
         l = np.shape(coverage)[1];
+        print l
         if l <= l_min:
             l_min = l
 
     print 'l_min = ' + str(l_min)
 
     for i in range(len(coverage_list)):
-        coverage_list[i] = coverage_list[i][:,:l_min];
-        methylated_list[i] = methylated_list[i][:,:l_min];
+        coverage_list[i] = coverage_list[i][:,-l_min:];
+        methylated_list[i] = methylated_list[i][:,-l_min:];
 
     coverage_all = np.vstack(tuple(coverage_list));
     methylated_all = np.vstack(tuple(methylated_list));

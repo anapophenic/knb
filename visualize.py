@@ -125,11 +125,11 @@ def print_bed(h, path_name, bed_title, m, ch, s):
         if (i == 0):
             i_start = 0
         elif (i == l-1 or h[i] != h[i-1]):
-            bed_list[h[i]].append(("chr"+ch, i_start*100*s, i*100*s))
+            bed_list[h[i-1]].append(("chr"+ch, i_start*100*s, i*100*s))
             i_start = i
 
     for i in range(m):
-        f = open(path_name + bed_title + str(i) + '.bed', 'w')
+        f = open(path_name + bed_title + 'm = ' + str(m) + 'i = ' + str(i) + '.bed', 'w')
         for ch, i_start, i_end in bed_list[i]:
             #base pair
             f.write(ch + '\t' + str(i_start) +'\t' + str(i_end) + '\n')
@@ -143,16 +143,28 @@ def plot_bed(axarr, bed_list):
         for j in range(len(bed_list[i])):
             xstart = bed_list[i][j][1]
             xsize = bed_list[i][j][2] - bed_list[i][j][1]
-            print xstart, xsize
+            #print xstart, xsize
             #axarr[i].broken_barh([(xstart, xsize)], (0, 1), edgecolor=None)
             axarr[i].add_patch(patches.Rectangle((xstart, 0), xsize, 1))
 
 def plot_meth(axarr, coverage, methylated):
     n_cells, l = np.shape(coverage)
     for i in range(n_cells):
-        meth_rate = methylated[i,:] / coverage[i,:]
+        meth_rate = methylated[i,:].astype(float) / coverage[i,:]
         axarr[i].fill_between(range(0,l*100,100), meth_rate)
         axarr[i].set_xlim([0, l*100])
+
+def plot_meth_full(axarr, coverage, methylated):
+    n_cells, l = np.shape(coverage)
+    for i in range(n_cells):
+        meth_rate = methylated[i,:].astype(float) / coverage[i,:]
+        axarr[3*i].fill_between(range(0,l*100,100), coverage[i,:])
+        axarr[3*i].set_ylabel('coverage')
+        axarr[3*i+1].fill_between(range(0,l*100,100), methylated[i,:])
+        axarr[3*i+1].set_ylabel('methylated')
+        axarr[3*i+2].fill_between(range(0,l*100,100), meth_rate)
+        axarr[3*i+2].set_xlim([0, l*100])
+
 
 def plot_bed_only(bed_list):
     m = len(bed_list)
@@ -176,10 +188,10 @@ def plot_m_and_c(coverage, methylated):
                 coverage[i,j] = 1
         axarr[3*i].plot(range(0,l*100,100), coverage[i,:])
         axarr[3*i+1].plot(range(0,l*100,100), methylated[i,:])
-        axarr[3*i+2].fill_between(range(0,l*100,100), methylated[i,:] / coverage[i,:])
+        axarr[3*i+2].fill_between(range(0,l*100,100), methylated[i,:].astype(float) / coverage[i,:])
     plt.show()
 
-def plot_meth_and_bed(coverage, methylated, bed_list, path_name, l, l_test):
+def plot_meth_and_bed(coverage, methylated, bed_list, p_ch, bed_name, path_name, l, l_test):
     m = len(bed_list)
     n_cells = np.shape(coverage)[0]
     plt.figure()
@@ -190,11 +202,48 @@ def plot_meth_and_bed(coverage, methylated, bed_list, path_name, l, l_test):
     fig_size[1] = 20
     plt.rcParams["figure.figsize"] = fig_size
 
-    fig, axarr = plt.subplots(n_cells+m, 1, sharex=True)
+    fig, axarr = plt.subplots(n_cells*3+m, 1, sharex=True)
+    plt.hold(True)
+    plot_meth_full(axarr[:n_cells*3], coverage, methylated)
+    plot_bed(axarr[n_cells*3:n_cells*3+m], bed_list)
+    for i in range(m):
+        axarr[n_cells*3+i].set_ylabel(truncated_str(p_ch[:,i]))
+
+    fig.savefig(path_name + bed_name + 'contrast_m = ' + str(m) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test='+str(l_test))
+    plt.hold(False)
+    plt.close(fig)
+
+def truncated_str(s):
+    return str(['%.3f' % i for i in s])
+
+
+def plot_meth_and_twobeds(coverage, methylated, bed_list_1, p_ch_1, bed_list_2, p_ch_2, bed_name, path_name, l, l_test):
+    l1 = len(bed_list_1)
+    l2 = len(bed_list_2)
+    n_cells = np.shape(coverage)[0]
+    plt.figure()
+    # Get current size
+
+    fig_size = plt.rcParams["figure.figsize"]
+    fig_size[0] = 300
+    fig_size[1] = 20
+    plt.rcParams["figure.figsize"] = fig_size
+
+    fig, axarr = plt.subplots(n_cells+l1+l2+1, 1, sharex=True)
     plt.hold(True)
     plot_meth(axarr[:n_cells], coverage, methylated)
-    plot_bed(axarr[n_cells:n_cells+m], bed_list)
-    fig.savefig(path_name + 'contrast_m = ' + str(m) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test'+str(l_test))
+
+    for i in range(0, l1):
+        axn = n_cells+i
+        plot_bed([axarr[axn]], [bed_list_1[i]])
+        axarr[axn].set_ylabel(truncated_str(p_ch_1[:,i]))
+
+    for i in range(0, l2):
+        axn = n_cells+l1+1+i
+        plot_bed([axarr[axn]], [bed_list_2[i]])
+        axarr[axn].set_ylabel(truncated_str(p_ch_2[:,i]))
+
+    fig.savefig(path_name + bed_name + 'l1 = ' + str(l1) + 'l2 = ' + str(l2) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test='+str(l_test))
     plt.hold(False)
     plt.close(fig)
 

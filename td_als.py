@@ -1,8 +1,6 @@
 import numpy as np
 import numerical_la as nla
-import operator
 from sktensor import dtensor, cp_als
-from scipy.optimize import linear_sum_assignment
 import matplotlib.pyplot as plt
 import scipy.io as io
 import itertools
@@ -10,14 +8,12 @@ import cvxpy as cvx
 import visualize as vis
 import postprocess as pp
 import td_tpm
+import utils as ut
 
-
-def prod(arr):
-    return reduce(operator.mul, arr, 1)
 
 def khatri_rao(As):
     k = np.shape(As[0])[1]
-    total_dims = prod([np.shape(A)[0] for A in As])
+    total_dims = ut.prod([np.shape(A)[0] for A in As])
     B = np.zeros((total_dims, k))
 
     for i in range(k):
@@ -28,18 +24,11 @@ def khatri_rao(As):
 
     return B
 
-def col_normalize(A):
-    d, r = np.shape(A)
-    for i in range(r):
-        A[:,i] = A[:,i] / np.linalg.norm(A[:,i])
-
-    return A
-
 def rand_init(r, dims, k):
     As = []
     for i in range(r):
         As.append(np.random.randn(dims[i], k))
-        As[i] = col_normalize(As[i])
+        As[i] = ut.normalize_m_l2(As[i])
 
     return As
 
@@ -50,12 +39,13 @@ def squeeze(T, dims ,i):
 
 def regularized_iter(T, As, A_ref, lam, i):
     dims = np.shape(T)
+    k = np.shape(As[0])[1]
     As_p = As[:]
     As_p.pop(i)
     B = khatri_rao(As_p)
     T_squeezed = squeeze(T, dims, i)
     As[i] = np.linalg.solve(B.T.dot(B) + lam * np.eye(k), B.T.dot(T_squeezed) + lam * A_ref.T).T
-    As[i] = col_normalize(As[i])
+    As[i] = ut.normalize_m_l2(As[i])
     return As
 
 def regularized_iter_noref(T, As, lam, i):
@@ -93,21 +83,6 @@ def triple_diag(w):
 
     return T
 
-def sign_dist(a, b):
-    return min(np.linalg.norm(a-b), np.linalg.norm(a+b))
-
-def error_eval(A, B):
-    A = col_normalize(A)
-    B = col_normalize(B)
-    k = np.shape(A)[1]
-    dist = np.zeros((k,k))
-    for i in range(k):
-        for j in range(k):
-            dist[i,j] = sign_dist(A[:,i], B[:,j])
-
-    row_ind, col_ind = linear_sum_assignment(dist)
-    return dist[row_ind, col_ind].sum()
-
 def cp_to_tensor(w, As):
     return nla.fast_trilinear(triple_diag(w), As[0].T, As[1].T, As[2].T)
 
@@ -121,8 +96,8 @@ def data_gen(N, k, alpha, r):
     Cs_1 = []
     Cs_2 = []
     for i in range(r):
-        Cs_1.append(col_normalize(np.random.randn(N,k)))
-        Cs_2.append(Cs_1[i] + alpha * col_normalize(np.random.randn(N,k)))
+        Cs_1.append(ut.normalize_m_l2(np.random.randn(N,k)))
+        Cs_2.append(Cs_1[i] + alpha * ut.normalize_m_l2(np.random.randn(N,k)))
 
     T_1 = cp_to_tensor(w, Cs_1)
     T_2 = cp_to_tensor(w, Cs_2)
@@ -164,11 +139,15 @@ def plot_error(ls, errs, k, lam, type):
 
     plt.close('all')
 
+def als(P_123, m_hat):
+    w, As = als_main(P_123, m_hat, 0, 1e-3)
+    return As[1]
+
 
 '''
 If we normalize lazily (in the outer loop), it often gives numerically unstable solutions.
 '''
-def als(T, k, lam, tol, max_iter=1000):
+def als_main(T, k, lam, tol, max_iter=1000):
     dims = np.shape(T)
     r = len(dims)
     lam = lam + 1e-3 * np.ones(r)
@@ -177,7 +156,7 @@ def als(T, k, lam, tol, max_iter=1000):
     for it in range(max_iter):
         for i in range(r):
             #deep copy
-            As = regularized_iter_noref(T, As, lam, i)
+            As = regularized_iter_noref(T, As, lam[i], i)
 
         if rel_err(T, As) < tol:
             break
@@ -236,8 +215,8 @@ if __name__ == '__main__':
         lam = np.zeros(r)
         lam[1] = l;
         w_1, As_1, w_2, As_2 = co_regularized_als(P_123_1, P_123_2, k, lam, tol)
-        #err_1 = error_eval(As_1[1], Cs_1[1])
-        #err_2 = error_eval(As_2[1], Cs_2[1])
+        #err_1 = ut. normalized_km(As_1[1], Cs_1[1])
+        #err_2 = ut.normalized_km(As_2[1], Cs_2[1])
         err_3 = error_eval_tensor(w_1, As_1, P_123_1, w_2, As_2, P_123_2)
         errs.append(err_3)
 

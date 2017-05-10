@@ -79,10 +79,9 @@ def refine_positify(O_h, P_21, P_31, P_23, P_13, P_123, m):
     vis.show_pi(pi_h, 'pi_'+str(m), 'merge_ctxts/')
 
 
-    T_h, pi_h = refine_nmf(P_21, O_h)
-
-    vis.show_T(T_h, 'T_p_'+str(m), 'merge_ctxts/')
-    vis.show_pi(pi_h, 'pi_p_'+str(m), 'merge_ctxts/')
+    #T_h, pi_h = refine_nmf(P_21, O_h)
+    #vis.show_T(T_h, 'T_p_'+str(m), 'merge_ctxts/')
+    #vis.show_pi(pi_h, 'pi_p_'+str(m), 'merge_ctxts/')
 
 
     print T_h

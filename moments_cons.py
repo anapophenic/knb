@@ -77,7 +77,6 @@ def moments_cons_importance_weighted(X_iw, phi, N, n):
 
 def moments_gt(O, phi, N, n, T, initDist):
 
-
     C = fm.gt_obs(phi, N, n, O);
 
     R_21 = C.dot(T.dot(np.diag(initDist).dot(C.T)))
