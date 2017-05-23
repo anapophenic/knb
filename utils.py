@@ -5,6 +5,9 @@ from scipy.optimize import linear_sum_assignment
 def normalize_m(M):
     return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
 
+def row_col_normalize_l1(M):
+    return M / np.sum(M)
+
 def normalize_m_l2(A):
     d, r = np.shape(A)
     for i in range(r):

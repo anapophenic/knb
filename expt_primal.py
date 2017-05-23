@@ -6,7 +6,7 @@ import numpy as np
 import data_import as di
 import matplotlib.pyplot as plt
 import hmm_inference as hi
-#import baum_welch as bw
+import baum_welch as bw
 import visualize as vis
 import os
 import sys
@@ -45,30 +45,58 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                 l_test = np.shape(coverage)[1]
             coverage_test = coverage[:,:l_test].astype(float)
             methylated_test = methylated[:,:l_test].astype(float)
+            coverage_test_reduced = np.sum(coverage_test, axis=0)
+            idx = (coverage_test_reduced != 0)
+            coverage_test_reduced = coverage_test[:,idx]
+            methylated_test_reduced = methylated_test[:,idx]
 
             #vis.plot_m_and_c(coverage_test, methylated_test)
 
             for phi in phis:
                 print 'phi = \n' + fm.phi_name(phi) + '\n'
                 print 'Constructing Moments..'
-                P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
-                vis.save_moments(P_21, P_31, P_23, P_13, P_123, ch, ce_group, s, ctxt_group, l, path_name)
+                #P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
+                #vis.save_moments(P_21, P_31, P_23, P_13, P_123, ch, ce_group, s, ctxt_group, l, path_name)
 
                 print 'Estimating..'
                 sec_title = vis.get_sec_title(path_name, ce_group, ch, l, s, n, phi, ctxt_group)
                 vis.print_expt_setting(path_name, sec_title, tex_name)
                 vis.print_table_header(path_name, tex_name);
-                for m in ms:
-                    #C_h = td_als.als(P_123, m)
-                    C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m)
+
+
+                td_algs = ['als']
+                pp_algs = ['pos_als_iter']
+
+                for m, td_alg, pp_alg in itertools.product(ms, td_algs, pp_algs):
+
+                    pi_0 = ut.normalize_v(np.random.rand(m))
+                    T_0 = ut.normalize_m(np.random.rand(m,m))
+                    p_ch_0 = np.random.rand(r,m)
+                    p_ch, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_ch_0, T_0, pi_0, 10)
+
+                    '''
+                    if td_alg == 'als':
+                        C_h = td_als.als(P_123, m)
+                    elif td_alg == 'tpm':
+                        C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m)
+
                     C_h = pp.postprocess_m(C_h)
-                    C_h, T_h, pi_h = pp.refine_positify(C_h, P_21, P_31, P_23, P_13, P_123, m)
+
+                    if pp_alg == 'pos':
+                        C_h, T_h, pi_h = pp.refine_positify(C_h, P_21, P_31, P_23, P_13, P_123, m)
+                    elif pp_alg == 'pos_als':
+                        T_h, pi_h = pp.refine_nmf(P_21, C_h)
+                    elif pp_alg == 'pos_als_iter':
+                        C_h, T_h, pi_h = pp.refine_als_p21(P_21, C_h)
 
                     lims = fm.phi_lims(n, r);
                     p_ch = fm.get_pc(phi, N, C_h, a, lims)
+                    '''
 
-                    print 'm = \n' + str(m) + '\nC_h = \n' + str(C_h) + '\nT_h = \n' + str(T_h) + '\npi_h = \n' + str(pi_h) + '\np_ch = \n' + str(p_ch) + '\n'
-                    fig_title = vis.get_fig_title(ce_group, ch, l, s, m, n, phi, ctxt_group)
+                    print 'm = \n' + str(m)
+                    #print '\nC_h = \n' + str(C_h)
+                    print '\nT_h = \n' + str(T_h) + '\npi_h = \n' + str(pi_h) + '\np_ch = \n' + str(p_ch) + '\n'
+                    fig_title = vis.get_fig_title(ce_group, ch, l, s, m, n, phi, ctxt_group) + '_' + td_alg + '_' + pp_alg
 
                     p_x_h = lambda i: bh.p_x_ch_binom(p_ch, coverage_test, methylated_test, i)
 
@@ -77,25 +105,28 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     color_scheme = vis.get_color_scheme(h_dec_p, m)
                     posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
                     bed_title = fig_title + 'l_test = ' + str(l_test) + '_bed'
-                    vis.browse_states(h_dec_p, path_name, posterior_title, color_scheme)
+
+                    h_dec_p = h_dec_p[idx]
+
+                    #vis.browse_states(h_dec_p, path_name, posterior_title, color_scheme)
                     bed_list = vis.print_bed(h_dec_p, path_name, bed_title, m, ch, s)
                     bed_name = fig_title
-                    vis.plot_meth_and_bed(coverage_test, methylated_test, bed_list, p_ch, bed_name, path_name, l, l_test)
+                    vis.plot_meth_and_bed(coverage_test_reduced, methylated_test_reduced, bed_list, p_ch, bed_name, path_name, l, l_test)
                     #print 'viterbi decoding...'
                     #h_dec_v = hi.viterbi_decode(l_test, pi_h, T_h, p_x_h);
                     #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
                     #vis.browse_states(h_dec_v, viterbi_title, color_scheme)
 
-                    print 'generating feature map graph...'
-                    feature_map_title = fig_title + '_feature_map.pdf'
-                    vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
+                    #print 'generating feature map graph...'
+                    #feature_map_title = fig_title + '_feature_map.pdf'
+                    #vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
 
                     #print 'printing matrices'
                     print T_h
                     #T_title = fig_title + 'T_h.pdf'
                     #vis.print_m(T_h, T_title)
 
-                    print C_h
+                    #print C_h
                     #C_title = fig_title + 'C_h.pdf'
                     #vis.print_m(C_h, C_title)
 
@@ -108,7 +139,7 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     #vis.print_v(pi_h, pi_title)
 
                     vis.print_fig_and(path_name, posterior_title,tex_name);
-                    vis.print_fig_bs(path_name, feature_map_title,tex_name);
+                    #vis.print_fig_bs(path_name, feature_map_title,tex_name);
 
                 vis.print_table_aheader(path_name, tex_name);
     vis.print_doc_aheader(path_name, tex_name);
@@ -179,8 +210,8 @@ def synthetic_expt(phi, path_name):
     print p_N
 
     #p_ch = dg.generate_p_ch_random(ms);
-    p_ch = dg.generate_p_ch_cartesian(ms);
-    #p_ch = dg.generate_p_ch_monotone(m,r);
+    #p_ch = dg.generate_p_ch_cartesian(ms);
+    p_ch = dg.generate_p_ch_monotone(m,r);
     print 'p_ch = '
     print p_ch
 
@@ -208,8 +239,10 @@ def synthetic_expt(phi, path_name):
     coverage, methylated, h = dg.generate_seq_bin_c(p_ch, p_N, T, pi, l);
     N, x_zipped, a = di.triples_from_seq(coverage, methylated, 'explicit')
 
+    '''
     x_importance_weighted = di.importance_weightify(x_zipped, l);
     P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
+    '''
     #R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = mc.moments_gt(O, phi, N, n, T, pi)
     #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
     #print 'C = '
@@ -235,25 +268,33 @@ def synthetic_expt(phi, path_name):
 
     for m_hat in range(4,5,1):
 
+        '''
         #C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m_hat)
         C_h = td_als.als(P_123, m_hat)
         C_h = pp.postprocess_m(C_h)
         C_h, T_h, pi_h = pp.refine_positify(C_h, P_21, P_31, P_23, P_13, P_123, m_hat)
         #T_h, pi_h = pp.refine_nmf(P_21, C_h)
-
         lims = fm.phi_lims(n, r);
         p_ch_h = fm.get_pc(phi, N, C_h, a, lims)
+        '''
+
+        pi_0 = ut.normalize_v(np.random.rand(m))
+        T_0 = ut.normalize_m(np.random.rand(m,m))
+        p_ch_0 = np.random.rand(r,m)
+        p_ch_h, T_h, pi_h = bw.baum_welch(coverage, methylated, p_ch_0, T_0, pi_0, 10)
 
         col_ind = ut.find_match(p_ch, p_ch_h)
         pi_h = pi_h[col_ind]
         p_ch_h = p_ch_h[:,col_ind]
         T_h = T_h[:, col_ind][col_ind, :]
-        C_h = C_h[:, col_ind]
+        #C_h = C_h[:, col_ind]
 
 
         print T_h
 
-        print 'm_hat = \n' + str(m) + '\nC_h = \n' + str(C_h) + '\nT_h = \n' + str(T_h) + '\npi_h = \n' + str(pi_h) + '\np_ch_h = \n' + str(p_ch_h) + '\n'
+        print 'm_hat = \n' + str(m)
+        #print '\nC_h = \n' + str(C_h)
+        print '\nT_h = \n' + str(T_h) + '\npi_h = \n' + str(pi_h) + '\np_ch_h = \n' + str(p_ch_h) + '\n'
         print 'p_ch_h - p_ch', np.linalg.norm(p_ch_h - p_ch)
         print 'T_h - T', np.linalg.norm(T_h - T)
         print 'pi_h - pi', np.linalg.norm(pi_h - pi)
@@ -280,7 +321,7 @@ def synthetic_expt(phi, path_name):
         print 'generating feature map graph...'
         color_scheme = vis.get_color_scheme(h_dec_p, m_hat)
         feature_map_title = fig_title + 'l = ' + str(l) + 'm_hat = ' + str(m_hat) + '_feature_map.pdf'
-        vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
+        #vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
 
 
         #print 'printing matrices'
@@ -289,8 +330,8 @@ def synthetic_expt(phi, path_name):
         #T_title = fig_title + 'T_h.pdf'
         #vis.print_m(T_h, T_title)
 
-        print 'C_h\' = '
-        print C_h.T
+        #print 'C_h\' = '
+        #print C_h.T
         #C_title = fig_title + 'C_h.pdf'
         #vis.print_m(C_h, C_title)
 
@@ -345,7 +386,7 @@ if __name__ == '__main__':
     #path_name = 'synthetic/1026'
     #synthetic_expt(fm.phi_beta_shifted_cached, 3, path_name);
 
-    '''
+
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
     #chrs.append('Y')
@@ -355,9 +396,9 @@ if __name__ == '__main__':
     #cells = ['E2', 'E1', 'E', 'V8', 'V9', 'V', 'P13P14', 'P15P16', 'P']
     #cells = ['E', 'V', 'P']
     #cell_groups = [['E', 'V']]
-    cell_groups = [['E']]
+    cell_groups = [['E', 'V']]
     # n should be divisible by cell_groups * ctxt_groups
-    n = 20
+    n = 50
     ms = range(2, 10)
     #order: CC, CT, CA, CG
     #ctxt_groups = [[range(0,4)], [range(4,8)], [range(8,12)], [range(12,16)], [range(0,4), range(4,8), range(8,12), range(12, 16)]]
@@ -365,25 +406,25 @@ if __name__ == '__main__':
     #ctxt_groups = [[range(0,4)]]
     #ctxt_groups = [[range(0,4), range(4,8), range(8,12), range(12, 16)]]
     ctxt_groups = [[range(12,16)]]
-    '''
+
     '''
     Expt 1: Compare Binning Feature vs. Beta Feature
 
     '''
-    '''
-    path_name = 'merge_ctxts/'
+
+    path_name = '0522/'
     tex_name = 'result.tex'
     #segments = range(1, 6)
     #segments = range(1,5)
-    segments = [10]
-    lengths = [40000]
+    segments = [1]
+    lengths = [4000]
     #, 20000, 40000, 80000, 160000, 320000
     lengths_test = [10000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
     #phis = [fm.phi_beta_shifted_cached]
     phis = [fm.phi_beta_shifted_cached_listify]
     real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, ctxt_groups, 0, path_name, tex_name)
-    '''
+
 
     '''
     Expt 2: Vary the number of Segments
@@ -401,8 +442,9 @@ if __name__ == '__main__':
     '''
     Expt 3: Synthetic dataset
     '''
-
+    '''
     phi = fm.phi_beta_shifted_cached_listify;
-    path_name = 'synthetic_cartesian/'
+    path_name = 'synthetic/'
 
     synthetic_expt(phi, path_name)
+    '''

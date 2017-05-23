@@ -198,8 +198,8 @@ def plot_meth_and_bed(coverage, methylated, bed_list, p_ch, bed_name, path_name,
     # Get current size
 
     fig_size = plt.rcParams["figure.figsize"]
-    fig_size[0] = 300
-    fig_size[1] = 20
+    fig_size[0] = 500
+    fig_size[1] = 40
     plt.rcParams["figure.figsize"] = fig_size
 
     fig, axarr = plt.subplots(n_cells*3+m, 1, sharex=True)
@@ -209,7 +209,7 @@ def plot_meth_and_bed(coverage, methylated, bed_list, p_ch, bed_name, path_name,
     for i in range(m):
         axarr[n_cells*3+i].set_ylabel(truncated_str(p_ch[:,i]))
 
-    fig.savefig(path_name + bed_name + 'contrast_m = ' + str(m) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test='+str(l_test))
+    fig.savefig(path_name + bed_name + 'contrast_m = ' + str(m) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test='+str(l_test) + '.pdf')
     plt.hold(False)
     plt.close(fig)
 
