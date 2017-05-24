@@ -23,7 +23,7 @@ def em_bmm_group(coverage, methylated, k, iters=10):
 
     post = np.zeros((k,l))
     for it in range(iters):
-        #print 'Iteration '+str(it)
+        print 'Iteration '+str(it)
         #E step
         for j in range(l):
             post[:,j] = posterior_group(coverage[:,j], methylated[:,j], p, pi)

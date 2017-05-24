@@ -46,6 +46,14 @@ def phi_binning_cached_listify(*args):
 def phi_binning_igz_cached_listify(*args):
     return phi_listify(phi_binning_igz_cached)(*args)
 
+def phi_downgrade(phi):
+    if phi == phi_beta_shifted_cached_listify:
+        phi_down = phi_beta_shifted_cached
+    elif phi == phi_binning_cached_listify:
+        phi_down = phi_binning_cached
+
+    return phi_down
+
 # automatically extend phi to domains where there is a list
 # basically, split the dimensions to all the contexts equally
 # This only works if n is divisible by the number of contexts
@@ -181,10 +189,10 @@ def expected_fm_p_c(phi, n, p_c, p_h):
 def expected_fm_p_c_group(phi, n, p_c, p_ch):
     r, m = np.shape(p_ch)
     lims = phi_lims(n, r)
-    O_m_group = np.zeros(n, m)
+    O_m_group = np.zeros((n, m))
 
     for i in range(r):
-        O_m_group[lims[i]:lims[i+1],:] = expected_fm_p_c(phi, n, p_c, p_ch[i,:])
+        O_m_group[lims[i]:lims[i+1],:] = expected_fm_p_c(phi_downgrade(phi), n/r, p_c[i,:], p_ch[i,:])
 
     return O_m_group
 

@@ -64,8 +64,8 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                 vis.print_expt_setting(path_name, sec_title, tex_name)
                 vis.print_table_header(path_name, tex_name);
 
-
-                td_algs = ['als', 'tpm', 'em_bmm', 'baum_welch']
+                #'als', 'tpm',
+                td_algs = ['em_bmm', 'baum_welch']
                 pp_algs = ['pos', 'pos_als', 'pos_als_iter']
 
                 for m, td_alg, pp_alg in itertools.product(ms, td_algs, pp_algs):
@@ -75,9 +75,11 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     elif td_alg == 'tpm':
                         C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m)
                     elif td_alg == 'em_bmm':
-                        p_ch = eb.em_bmm_group(coverage, methylated, m)
+                        p_c = p_c[:,:100]
+                        p_ch, pi_h = eb.em_bmm_group(coverage_train, methylated_train, m)
                         C_h = fm.expected_fm_p_c_group(phi, n, p_c, p_ch)
                     elif td_alg == 'baum_welch':
+                        p_c = p_c[:,:100]
                         pi_0 = ut.normalize_v(np.random.rand(m))
                         T_0 = ut.normalize_m(np.random.rand(m,m))
                         p_ch_0 = np.random.rand(r,m)
@@ -121,9 +123,9 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     #viterbi_title = fig_title + 'l_test = ' + str(l_test) + '_viterbi.pdf'
                     #vis.browse_states(h_dec_v, viterbi_title, color_scheme)
 
-                    #print 'generating feature map graph...'
-                    #feature_map_title = fig_title + '_feature_map.pdf'
-                    #vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
+                    print 'generating feature map graph...'
+                    feature_map_title = fig_title + '_feature_map.pdf'
+                    vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
 
                     print 'printing matrices'
 
@@ -131,9 +133,9 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     T_title = fig_title + 'T_h.pdf'
                     vis.show_m(T_h, T_title, path_name, p_ch, True)
 
-                    #print C_h
-                    #C_title = fig_title + 'C_h.pdf'
-                    #vis.print_m(C_h, C_title)
+                    print C_h
+                    C_title = fig_title + 'C_h.pdf'
+                    vis.show_m(C_h, C_title, path_name, p_ch, False)
 
                     print p_ch
                     p_title = fig_title + 'p_h.pdf'
@@ -144,7 +146,7 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     vis.show_v(pi_h, pi_title, path_name, p_ch)
 
                     vis.print_fig_and(path_name, posterior_title, tex_name);
-                    #vis.print_fig_bs(path_name, feature_map_title,tex_name);
+                    vis.print_fig_bs(path_name, feature_map_title,tex_name);
 
                 vis.print_table_aheader(path_name, tex_name);
     vis.print_doc_aheader(path_name, tex_name);
@@ -395,12 +397,12 @@ if __name__ == '__main__':
 
     '''
 
-    path_name = '0522/'
+    path_name = '0524/'
     tex_name = 'result.tex'
     #segments = range(1, 6)
     #segments = range(1,5)
     segments = [1]
-    lengths = [2000]
+    lengths = [20000]
     #, 20000, 40000, 80000, 160000, 320000
     lengths_test = [10000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
