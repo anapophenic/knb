@@ -178,6 +178,16 @@ def expected_fm_p_c(phi, n, p_c, p_h):
     O_m = expected_fm_O(phi, N, n, O)
     return O_m
 
+def expected_fm_p_c_group(phi, n, p_c, p_ch):
+    r, m = np.shape(p_ch)
+    lims = phi_lims(n, r)
+    O_m_group = np.zeros(n, m)
+
+    for i in range(r):
+        O_m_group[lims[i]:lims[i+1],:] = expected_fm_p_c(phi, n, p_c, p_ch[i,:])
+
+    return O_m_group
+
 def get_a(N):
     return sum(map(lambda n: 1.0/(n+2), range(0,N+1,1))) / (N+1)
 
@@ -219,7 +229,6 @@ def get_O_from_p(phi, p_c, p_h):
         O_h = get_O_stochastic_N(p_c, p_h)
 
     return O_h
-
 
 def get_p(phi, N, C_h, a):
 

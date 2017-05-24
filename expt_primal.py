@@ -6,13 +6,14 @@ import numpy as np
 import data_import as di
 import matplotlib.pyplot as plt
 import hmm_inference as hi
-import baum_welch as bw
 import visualize as vis
 import os
 import sys
 import itertools
 import td_tpm
 import td_als
+import em_bmm as eb
+import baum_welch as bw
 import postprocess as pp
 import utils as ut
 
@@ -27,7 +28,7 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
         r = len(ctxt_group) * len(ce_group)
         print 'ch = \n' + str(ch) + '\nce_group = \n' + str(ce_group) + '\ns = \n' + str(s) + '\nctxt_group = \n' + str(ctxt_group)+ '\nr = \n' + str(r) + '\n'
         print 'Reading Data..'
-        coverage, methylated, N, x_zipped, a = di.data_prep_ctxt_ce(ctxt_group, ce_group, s, ch);
+        coverage, methylated, N, x_zipped, a, p_c = di.data_prep_ctxt_ce(ctxt_group, ce_group, s, ch);
         print 'r = ' + str(r)
         print '#rows of coverage (should be r)' + str(np.shape(coverage)[0])
         print 'coverage = \n' + str(coverage) + '\nmethylated = \n' + str(methylated) + '\n' #+ 'x_zipped = ' + x_zipped
@@ -55,7 +56,7 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
             for phi in phis:
                 print 'phi = \n' + fm.phi_name(phi) + '\n'
                 print 'Constructing Moments..'
-                #P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
+                P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(x_importance_weighted, phi, N, n);
                 #vis.save_moments(P_21, P_31, P_23, P_13, P_123, ch, ce_group, s, ctxt_group, l, path_name)
 
                 print 'Estimating..'
@@ -64,23 +65,24 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                 vis.print_table_header(path_name, tex_name);
 
 
-                td_algs = ['als']
-                pp_algs = ['pos_als_iter']
+                td_algs = ['als', 'tpm', 'em_bmm', 'baum_welch']
+                pp_algs = ['pos', 'pos_als', 'pos_als_iter']
 
                 for m, td_alg, pp_alg in itertools.product(ms, td_algs, pp_algs):
-
-                    pi_0 = ut.normalize_v(np.random.rand(m))
-                    T_0 = ut.normalize_m(np.random.rand(m,m))
-                    p_ch_0 = np.random.rand(r,m)
 
                     if td_alg == 'als':
                         C_h = td_als.als(P_123, m)
                     elif td_alg == 'tpm':
                         C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m)
                     elif td_alg == 'em_bmm':
-                        p_ch = 
+                        p_ch = eb.em_bmm_group(coverage, methylated, m)
+                        C_h = fm.expected_fm_p_c_group(phi, n, p_c, p_ch)
                     elif td_alg == 'baum_welch':
-                        p_ch, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_ch_0, T_0, pi_0, 20)
+                        pi_0 = ut.normalize_v(np.random.rand(m))
+                        T_0 = ut.normalize_m(np.random.rand(m,m))
+                        p_ch_0 = np.random.rand(r,m)
+                        p_ch, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_ch_0, T_0, pi_0)
+                        C_h = fm.expected_fm_p_c_group(phi, n, p_c, p_ch)
 
                     C_h = pp.postprocess_m(C_h)
 
@@ -93,7 +95,7 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
 
                     lims = fm.phi_lims(n, r);
                     p_ch = fm.get_pc(phi, N, C_h, a, lims)
-                    '''
+
 
                     print 'm = \n' + str(m)
                     #print '\nC_h = \n' + str(C_h)
@@ -398,7 +400,7 @@ if __name__ == '__main__':
     #segments = range(1, 6)
     #segments = range(1,5)
     segments = [1]
-    lengths = [20000, 40000, 80000, 160000, 320000]
+    lengths = [2000]
     #, 20000, 40000, 80000, 160000, 320000
     lengths_test = [10000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]

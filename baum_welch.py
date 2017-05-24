@@ -4,7 +4,7 @@ import binom_hmm as bh
 import utils as ut
 
 #Baum-Welch algorithm for binomial HMMs
-def baum_welch(coverage, methylated, p_0, T_0, pi_0, iters):
+def baum_welch(coverage, methylated, p_0, T_0, pi_0, iters=10):
 
     r, l = np.shape(coverage)
 
