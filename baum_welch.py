@@ -8,8 +8,6 @@ def baum_welch(coverage, methylated, p_0, T_0, pi_0, iters):
 
     r, l = np.shape(coverage)
 
-    print l
-
     pi = pi_0
     T = T_0
     p = p_0
@@ -22,14 +20,7 @@ def baum_welch(coverage, methylated, p_0, T_0, pi_0, iters):
         gamma, xi = expectation(alpha, beta, T, p_x_h)
         p, T, pi = maximization(gamma, xi, coverage, methylated)
 
-        print 'p = '
-        print p
-
-        print 'T = '
-        print T
-
-        print 'pi = '
-        print pi
+        print 'p = ', p, 'T = ', T, 'pi = ', pi
 
     return p, T, pi
 

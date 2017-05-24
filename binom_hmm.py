@@ -1,20 +1,21 @@
 import numpy as np
 from scipy import stats
 
-def get_O_binom(m, N, p):
+def get_O_binom(N, p):
+    m = np.shape(p)[0]
     O = np.zeros((N+1, m));
 
     for i in xrange(N+1):
         for j in xrange(m):
             O[i,j] = stats.binom.pmf(i, N, p[j])
-            #O[i,j] = special.binom(N, i) * (p[j] ** i) * ((1-p[j]) ** (N-i))
 
     return O
 
-
-def get_O_stochastic_N(p_N, p):
-    m = np.shape(p)[0]
-    N = np.shape(p_N)[0] - 1
+# at this point we do not support input of p_ch. This may generate an O
+# of exponential size, which we try to avoid.
+def get_O_stochastic_N(p_c, p_h):
+    m = np.shape(p_h)[0]
+    N = np.shape(p_c)[0] - 1
     O = np.zeros(((N+1)*(N+1), m))
 
     # n = i possibly take value 0,...,N
@@ -23,10 +24,7 @@ def get_O_stochastic_N(p_N, p):
     for i in xrange(N+1):
         for k in xrange(i+1):
             for j in xrange(m):
-                #v = special.binom(i, k) * (p[j] ** k) * ((1-p[j]) ** (i-k)) / (N+1)
-                #if np.isnan(v):
-                #    print i,k,j,p[j]
-                O[(N+1)*i + k, j] = stats.binom.pmf(k, i, p[j]) * p_N[i]
+                O[(N+1)*i + k, j] = stats.binom.pmf(k, i, p_h[j]) * p_c[i]
 
     return O
 

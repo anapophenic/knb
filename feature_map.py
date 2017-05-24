@@ -3,6 +3,7 @@ import utils as ut
 from scipy import stats
 import time
 import postprocess as pp
+import binom_hmm as bh
 
 def cache_results(a_func):
     '''This decorator funcion binds a map between the tuple of arguments
@@ -148,7 +149,7 @@ def phi_onehot(x, N, n):
     p[int(x)] = 1
     return p;
 
-def gt_obs(phi, N, n, O):
+def expected_fm_O(phi, N, n, O):
     '''
         Input:
             phi: feature map
@@ -160,16 +161,22 @@ def gt_obs(phi, N, n, O):
     '''
 
     if phi == phi_onehot or phi == phi_beta:
-        Trans = np.zeros((n, N+1));
+        transfer = np.zeros((n, N+1));
         for x in xrange(N+1):
-            Trans[:,x] = phi(x, N, n).T
+            transfer[:,x] = phi(x, N, n).T
     elif phi == phi_beta_shifted or phi == phi_binning or phi == phi_beta_shifted_cached or phi == phi_binning_cached:
-        Trans = np.zeros((n, (N+1)*(N+1)));
+        transfer = np.zeros((n, (N+1)*(N+1)));
         for x in xrange((N+1)*(N+1)):
-            Trans[:,x] = phi(x, N, n).T
+            transfer[:,x] = phi(x, N, n).T
 
-    O_m = Trans.dot(O);
+    O_m = transfer.dot(O);
     return O_m;
+
+def expected_fm_p_c(phi, n, p_c, p_h):
+    O = bh.get_O_stochastic_N(p_c, p_h)
+    N = np.shape(p_c)[0] - 1
+    O_m = expected_fm_O(phi, N, n, O)
+    return O_m
 
 def get_a(N):
     return sum(map(lambda n: 1.0/(n+2), range(0,N+1,1))) / (N+1)
@@ -188,23 +195,28 @@ def phi_name(phi):
         return "binning"
 
 
-def get_O(phi, N, n, C_h, a):
+def get_O(phi, p_c, C_h, a):
     '''
         Input:
             phi: feature map
             [0..N]: possible values x can take
-            n: dimensionality of feature map
             C_h: estimated observation matrix
         Output:
             p_h: estimated methylating probability
     '''
+    N = len(p_c) - 1
     p_h = get_p(phi, N, C_h, a);
+    O_h = get_O_from_p(phi, p_c, p_h)
 
+    return O_h
+
+def get_O_from_p(phi, p_c, p_h):
+
+    N = len(p_c) - 1
     if (phi == phi_onehot or phi == phi_beta):
-        O_h = get_O_binom(m, N, p_h)
+        O_h = get_O_binom(N, p_h)
     elif (phi == phi_beta_shifted or phi == phi_binning):
-        # implicit assuming the coverage is uniform distributed, which may be wrong
-        O_h = get_O_stochastic_N(m, N, p_h)
+        O_h = get_O_stochastic_N(p_c, p_h)
 
     return O_h
 

@@ -72,7 +72,7 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     pi_0 = ut.normalize_v(np.random.rand(m))
                     T_0 = ut.normalize_m(np.random.rand(m,m))
                     p_ch_0 = np.random.rand(r,m)
-                    p_ch, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_ch_0, T_0, pi_0, 10)
+                    p_ch, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_ch_0, T_0, pi_0, 20)
 
                     '''
                     if td_alg == 'als':
@@ -121,50 +121,29 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     #feature_map_title = fig_title + '_feature_map.pdf'
                     #vis.print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims)
 
-                    #print 'printing matrices'
+                    print 'printing matrices'
+
                     print T_h
-                    #T_title = fig_title + 'T_h.pdf'
-                    #vis.print_m(T_h, T_title)
+                    T_title = fig_title + 'T_h.pdf'
+                    vis.show_m(T_h, T_title, path_name, p_ch, True)
 
                     #print C_h
                     #C_title = fig_title + 'C_h.pdf'
                     #vis.print_m(C_h, C_title)
 
                     print p_ch
-                    #p_title = fig_title + 'p_h.pdf'
-                    #vis.print_v(p_h, p_title)
+                    p_title = fig_title + 'p_h.pdf'
+                    vis.show_m(p_ch, p_title, path_name, p_ch, False)
 
                     print pi_h
-                    #pi_title = fig_title + 'pi_h.pdf'
-                    #vis.print_v(pi_h, pi_title)
+                    pi_title = fig_title + 'pi_h.pdf'
+                    vis.show_v(pi_h, pi_title, path_name, p_ch)
 
-                    vis.print_fig_and(path_name, posterior_title,tex_name);
+                    vis.print_fig_and(path_name, posterior_title, tex_name);
                     #vis.print_fig_bs(path_name, feature_map_title,tex_name);
 
                 vis.print_table_aheader(path_name, tex_name);
     vis.print_doc_aheader(path_name, tex_name);
-
-
-def synthetic_test_data(p, T, pi, N, l_test):
-
-    p_N = dg.generate_p_N(N)
-    O = bh.get_O_stochastic_N(p_N, p);
-    x, h = dg.generate_seq(O, T, pi, l_test);
-    browse_states(h)
-
-    return x, h
-
-def decoding_simulation(x, p_h, T_h, pi_h, N):
-    l = len(x)
-    coverage, methylated = zip(*map(lambda a: bh.to_c_m(a, N), x))
-
-    p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage, methylated, i)
-    h_dec_p = hi.posterior_decode(l, pi_h, T_h, p_x_h);
-    h_dec_v = hi.viterbi_decode(l, pi_h, T_h, p_x_h);
-
-    browse_states(h_dec_p)
-    browse_states(h_dec_v)
-    #print zip(h, h_dec_p, h_dec_v)
 
 
 def synthetic_expt(phi, path_name):
@@ -417,7 +396,7 @@ if __name__ == '__main__':
     #segments = range(1, 6)
     #segments = range(1,5)
     segments = [1]
-    lengths = [4000]
+    lengths = [20000, 40000, 80000, 160000, 320000]
     #, 20000, 40000, 80000, 160000, 320000
     lengths_test = [10000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]

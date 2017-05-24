@@ -2,6 +2,7 @@ import scipy.io
 import numpy as np
 import binom_hmm as bh
 from collections import Counter
+import visualize as vis
 
 def importance_weightify(x_zipped, l):
     return Counter(x_zipped[:l]);
@@ -96,23 +97,34 @@ def triples_from_seq(coverage, methylated, formating):
   r, l = np.shape(coverage)
   x = [tuple([bh.to_x(coverage[c,i], methylated[c,i], N) for c in range(r)]) for i in range(l)]
 
-  # compute E[1/(n+2)]
-  a = np.sum(1.0 / (coverage+2), axis = 1) / l
-
   if formating=='explicit':
     x_zipped = zip(x[0:l], x[1:l+1], x[2:l+2])
-    return N, x_zipped, a
+    return N, x_zipped
   else:
     X = np.vstack((x[0:l], x[1:l+1], x[2:l+2])).T
-    return N, X, a
+    return N, X
 
+def stats_from_seq(coverage, methylated):
+    r, l = np.shape(coverage)
+    # compute E[1/(n+2)]
+    a = np.sum(1.0 / (coverage+2), axis = 1) / l
+
+    N = np.amax(coverage)
+    p_c = np.zeros((r, N+1))
+    for i in range(r):
+        hist = dict(Counter(coverage[i,:]));
+        for k, v in hist.iteritems():
+            p_c[i,k] = v / float(l)
+
+    return a, p_c
 
 def data_prep_ctxt_ce(ctxt_group, ce_group, s, ch):
 
     coverage, methylated = seq_prep_ctxt_ce(ce_group, ch, None, s, ctxt_group);
-    N, x_zipped, a = triples_from_seq(coverage, methylated, 'explicit')
+    N, x_zipped = triples_from_seq(coverage, methylated, 'explicit')
+    a, p_c = stats_from_seq(coverage, methylated)
 
-    return coverage, methylated, N, x_zipped, a
+    return coverage, methylated, N, x_zipped, a, p_c
 
 #def data_prep(filename, formating='explicit', l=None, s=1, ctxts=[range(16)]):
 """
@@ -138,13 +150,24 @@ a: correction term \E[1/(n+2)] used in explicit feature map
 
 if __name__ == '__main__':
 
-  filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_E1_chrY_binsize100.mat'
+    ctxt_group = [range(12,16)]
+    ce_group = ['E']
+    s = 1
+    ch = '1'
 
-  N, X, a = data_prep(filename, ctxt = range(12,16));
-  print N
-  print X
-  print a
+    coverage, methylated, N, x_zipped, a, p_c = data_prep_ctxt_ce(ctxt_group, ce_group, s, ch);
 
+    cov_0 = coverage[0,:]
+    vis.print_hist(cov_0[cov_0 != 0], p_c)
+
+
+
+  #filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_E1_chrY_binsize100.mat'
+
+  #N, X, a = data_prep(filename, ctxt = range(12,16));
+  #print N
+  #print X
+  #print a
 
   #print mat
   #print mat['mc']

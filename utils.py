@@ -1,6 +1,7 @@
 import numpy as np
 import operator
 from scipy.optimize import linear_sum_assignment
+import scipy as sp
 
 def normalize_m(M):
     return M.dot(np.linalg.inv(np.diag(np.sum(np.asarray(M), axis=0))))
@@ -51,3 +52,12 @@ def find_match(A, B):
 def error_eval(A, B):
     col_ind, errs = km(A, B)
     return errs
+
+def truncated_poisson_pmf(mu, N):
+    p = np.zeros(N+1)
+    for i in range(N+1):
+        p[i] = sp.stats.poisson.pmf(i, mu)
+
+    p = normalize_v(p)
+
+    return p

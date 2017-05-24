@@ -20,15 +20,40 @@ def directory_setup(path_name):
     except:
         os.mkdir(path_name + '/figs')
 
-def print_v(p, vec_title):
-    print_m(np.array([p.tolist()]), vec_title)
+'''
+def print_v(p, vec_title, state_labels):
+    print_m(np.array([p.tolist()]), vec_title, state_labels)
 
-def print_m(M, mat_title):
+def print_m(M, mat_title, state_labels):
     fig = plt.figure(1)
     plt.matshow(M, interpolation='nearest', cmap=plt.cm.Spectral)
+
     fig.savefig(mat_title)
     plt.show(block=False)
     plt.close(fig)
+'''
+def show_m(mat, m_title, path_name, p_ch, is_T):
+    fig_size = plt.rcParams["figure.figsize"]
+    fig_size[0] = 10
+    fig_size[1] = 10
+    plt.rcParams["figure.figsize"] = fig_size
+    r, m = np.shape(p_ch)
+
+    plt.hold(True)
+    fig, ax = plt.subplots(1, 1)
+    cax = plt.imshow(mat, interpolation='nearest', cmap=plt.cm.ocean, vmin=0, vmax=1)
+    plt.xticks(range(m), [truncated_str(p_ch[:,i]) for i in range(m)] )
+    if is_T:
+        plt.yticks(range(m), [truncated_str(p_ch[:,i]) for i in range(m)])
+    fig.colorbar(cax)
+    fig.savefig(path_name + m_title)
+    plt.close(fig)
+
+
+def show_v(vec, v_title, path_name, p_ch):
+    m = np.shape(vec)[0];
+    mat = vec.reshape((1,m))
+    show_m(mat, v_title, path_name, p_ch, False)
 
 def group_name(ce_group):
     s = ''
@@ -53,6 +78,27 @@ def get_sec_title(path_name, ce_group, ch, l, s, n, phi, ctxt_group):
           ', n = ' + str(n) + ', phi = ' + fm.phi_name(phi) + \
           ', ctxt_group = ' + bh.ctxt_name(ctxt_group)
 
+def print_hist(coverage, p_c):
+    l = np.shape(coverage)
+    N = np.amax(coverage)
+
+    p_c[0,0] = 0
+    p_c[0,:] = ut.normalize_v(p_c[0,:])
+
+    mu = np.sum(coverage)/l
+    poi_c = ut.truncated_poisson_pmf(mu, int(N))
+
+
+    fig = plt.figure()
+    plt.hold(True)
+
+    plt.plot(p_c[0,:]*l,'b')
+    plt.plot(poi_c*l, 'r')
+
+    n, bins, patches = plt.hist(coverage, N, facecolor='green', alpha=0.75)
+    fig.savefig('c_distn/c_distn' + '.png')
+    plt.hold(False)
+    plt.close(fig)
 
 def print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims):
     n, m = np.shape(C_h)
@@ -71,7 +117,7 @@ def print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims):
         for i in range(m):
             #print i
             #print C_h[lims[j]:lims[j+1],i]
-            #print color_scheme[i]
+            #print heme[i]
             plt.plot(ut.unif_partition(lims[j+1]-lims[j]), C_h[lims[j]:lims[j+1],i], color=color_scheme[i], linewidth=3)
 
     fig.savefig(path_name + feature_map_title)
@@ -197,7 +243,8 @@ def plot_meth_and_bed(coverage, methylated, bed_list, p_ch, bed_name, path_name,
     plt.figure()
     # Get current size
 
-    fig_size = plt.rcParams["figure.figsize"]
+    fig_size_temp = plt.rcParams["figure.figsize"]
+    fig_size = fig_size_temp
     fig_size[0] = 500
     fig_size[1] = 40
     plt.rcParams["figure.figsize"] = fig_size
@@ -211,6 +258,8 @@ def plot_meth_and_bed(coverage, methylated, bed_list, p_ch, bed_name, path_name,
 
     fig.savefig(path_name + bed_name + 'contrast_m = ' + str(m) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test='+str(l_test) + '.pdf')
     plt.hold(False)
+
+    plt.rcParams["figure.figsize"] = fig_size_temp
     plt.close(fig)
 
 def truncated_str(s):
@@ -224,9 +273,10 @@ def plot_meth_and_twobeds(coverage, methylated, bed_list_1, p_ch_1, bed_list_2, 
     plt.figure()
     # Get current size
 
-    fig_size = plt.rcParams["figure.figsize"]
-    fig_size[0] = 300
-    fig_size[1] = 20
+    fig_size_temp = plt.rcParams["figure.figsize"]
+    fig_size = fig_size_temp
+    fig_size[0] = 500
+    fig_size[1] = 40
     plt.rcParams["figure.figsize"] = fig_size
 
     fig, axarr = plt.subplots(n_cells+l1+l2+1, 1, sharex=True)
@@ -245,6 +295,7 @@ def plot_meth_and_twobeds(coverage, methylated, bed_list_1, p_ch_1, bed_list_2, 
 
     fig.savefig(path_name + bed_name + 'l1 = ' + str(l1) + 'l2 = ' + str(l2) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test='+str(l_test))
     plt.hold(False)
+    plt.rcParams["figure.figsize"] = fig_size_temp
     plt.close(fig)
 
 def print_doc_header(path_name, tex_name):
@@ -313,27 +364,6 @@ def load_moments(filename):
     P_13 = moments['P13'];
     P_123 = moments['P123'];
     return P_21, P_31, P_23, P_13, P_123
-
-
-def show_T(T, T_title, path_name):
-    plt.hold(True)
-    fig, ax = plt.subplots(1, 1)
-    plt.imshow(T, interpolation='nearest', cmap=plt.cm.ocean)
-    plt.colorbar()
-    plt.hold(False)
-    fig.savefig(path_name + T_title)
-    plt.close(fig)
-
-def show_pi(pi, pi_title, path_name):
-    m = np.shape(pi)[0];
-    pi_mat = pi.reshape((m,1))
-    plt.hold(True)
-    fig, ax = plt.subplots(1, 1)
-    plt.imshow(pi_mat, interpolation='nearest', cmap=plt.cm.ocean)
-    plt.colorbar()
-    plt.hold(False)
-    fig.savefig(path_name + pi_title)
-    plt.close(fig)
 
 if __name__ == '__main__':
 
