@@ -72,13 +72,15 @@ def real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, c
                     pi_0 = ut.normalize_v(np.random.rand(m))
                     T_0 = ut.normalize_m(np.random.rand(m,m))
                     p_ch_0 = np.random.rand(r,m)
-                    p_ch, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_ch_0, T_0, pi_0, 20)
 
-                    '''
                     if td_alg == 'als':
                         C_h = td_als.als(P_123, m)
                     elif td_alg == 'tpm':
                         C_h = td_tpm.tpm(P_21, P_31, P_23, P_13, P_123, m)
+                    elif td_alg == 'em_bmm':
+                        p_ch = 
+                    elif td_alg == 'baum_welch':
+                        p_ch, T_h, pi_h = bw.baum_welch(coverage_train, methylated_train, p_ch_0, T_0, pi_0, 20)
 
                     C_h = pp.postprocess_m(C_h)
 
