@@ -45,11 +45,13 @@ def generate_p_ch_random(ms):
     return p_ch
 
 
-def generate_p_N(N):
+def generate_p_c(N, r):
     #p = np.zeros(N+1);
     #p[N] = 1;
-    p = np.ones(N+1) / (N+1);
-    return p
+    p_c = np.zeros((r, N+1))
+    for c in range(r):
+        p_c[c,:] = np.ones(N+1) / (N+1);
+    return p_c
 
 #def generate_p_N_c(N, r):
 #    for c in range(r):
@@ -123,18 +125,21 @@ def generate_seq(O, T, pi, l):
 
 # given a distribution on coverage p_N,
 # generate a chain of hidden states
-def generate_seq_bin_c(p_ch, p_N, T, pi, l):
+def generate_seq_bin_c(mod, l):
+    return generate_seq_bin_c_indirect(mod.p_ch, mod.p_c, mod.T, mod.pi, l)
+
+def generate_seq_bin_c_indirect(p_ch, p_c, T, pi, l):
 
     h = generate_hidden(T, pi, l);
     r = np.shape(p_ch)[0];
-    N = np.shape(p_N)[0] - 1; #Values that coverage can take: [0, 1, ..., N]
+    N = np.shape(p_c)[1] - 1; #Values that coverage can take: [0, 1, ..., N]
 
     coverage = np.zeros((r, l));
     methylated = np.zeros((r, l));
 
     for c in range(r):
         for i in range(l):
-            coverage[c, i] = draw_categorical(range(N+1), p_N);
+            coverage[c, i] = draw_categorical(range(N+1), p_c[c,:])
             methylated[c, i] = np.random.binomial(coverage[c, i], p_ch[c, h[i]])
 
     return coverage, methylated, h

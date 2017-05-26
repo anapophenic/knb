@@ -9,16 +9,16 @@ import matplotlib.pylab as plt
 import matplotlib.patches as patches
 import utils as ut
 
-def directory_setup(path_name):
+def directory_setup(mod):
     try:
-        os.stat(path_name)
+        os.stat(mod.path_name)
     except:
-        os.mkdir(path_name)
+        os.mkdir(mod.path_name)
 
     try:
-        os.stat(path_name + '/figs')
+        os.stat(mod.path_name + '/figs')
     except:
-        os.mkdir(path_name + '/figs')
+        os.mkdir(mod.path_name + '/figs')
 
 '''
 def print_v(p, vec_title, state_labels):
@@ -32,19 +32,19 @@ def print_m(M, mat_title, state_labels):
     plt.show(block=False)
     plt.close(fig)
 '''
-def show_m(mat, m_title, path_name, p_ch, is_T):
+def show_m(mat, m_title, path_name, state_name, is_T):
     fig_size = plt.rcParams["figure.figsize"]
     fig_size[0] = 10
     fig_size[1] = 10
     plt.rcParams["figure.figsize"] = fig_size
-    r, m = np.shape(p_ch)
+    m = len(state_name)
 
     plt.hold(True)
     fig, ax = plt.subplots(1, 1)
     cax = plt.imshow(mat, interpolation='nearest', cmap=plt.cm.ocean, vmin=0, vmax=1)
-    plt.xticks(range(m), [truncated_str(p_ch[:,i]) for i in range(m)] )
+    plt.xticks(range(m),  state_name)
     if is_T:
-        plt.yticks(range(m), [truncated_str(p_ch[:,i]) for i in range(m)])
+        plt.yticks(range(m), state_name)
     fig.colorbar(cax)
     fig.savefig(path_name + m_title)
     plt.close(fig)
@@ -62,21 +62,22 @@ def group_name(ce_group):
 
     return s
 
-def get_fig_title(ce_group, ch, l, s, m, n, phi, ctxt_group):
+def get_fig_title(mod):
 
-    return 'figs/' + 'ce_group = ' + group_name(ce_group) + \
-           '_chr = ' + ch + '_l = ' + str(l) + \
-           '_s = ' + str(s) + '_m = ' + str(m) + \
-           '_n = ' + str(n) + '_phi = ' + fm.phi_name(phi) + \
-           '_ctxt_group = ' + bh.ctxt_name(ctxt_group)
+    return 'figs/' + 'ce_group = ' + group_name(mod.ce_group) + \
+           '_chr = ' + mod.ch + '_l = ' + str(mod.l) + \
+           '_s = ' + str(mod.s) + '_m_h = ' + str(mod.m_h) + \
+           '_n = ' + str(mod.n) + '_phi = ' + fm.phi_name(mod.phi) + \
+           '_ctxt_group = ' + bh.ctxt_name(mod.ctxt_group) + \
+           '_' + mod.td_alg + '_' + mod.pp_alg
 
-def get_sec_title(path_name, ce_group, ch, l, s, n, phi, ctxt_group):
+def get_sec_title(mod):
 
-   return 'ce_group = ' + group_name(ce_group) + \
-          ', chr = ' + ch + ', l = ' + str(l) + \
-          ', s = ' + str(s) + \
-          ', n = ' + str(n) + ', phi = ' + fm.phi_name(phi) + \
-          ', ctxt_group = ' + bh.ctxt_name(ctxt_group)
+   return 'ce_group = ' + group_name(mod.ce_group) + \
+          ', chr = ' + mod.ch + ', l = ' + str(mod.l) + \
+          ', s = ' + str(mod.s) + \
+          ', n = ' + str(mod.n) + ', phi = ' + fm.phi_name(mod.phi) + \
+          ', ctxt_group = ' + bh.ctxt_name(mod.ctxt_group)
 
 def print_hist(coverage, p_c):
     l = np.shape(coverage)
@@ -100,9 +101,9 @@ def print_hist(coverage, p_c):
     plt.hold(False)
     plt.close(fig)
 
-def print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims):
-    n, m = np.shape(C_h)
-    r = len(lims) - 1
+def print_feature_map(mod):
+    n, m = np.shape(mod.C_h)
+    r = len(mod.lims) - 1
 
     fig = plt.figure(1)
     plt.hold(True)
@@ -118,9 +119,9 @@ def print_feature_map(C_h, color_scheme, path_name, feature_map_title, lims):
             #print i
             #print C_h[lims[j]:lims[j+1],i]
             #print heme[i]
-            plt.plot(ut.unif_partition(lims[j+1]-lims[j]), C_h[lims[j]:lims[j+1],i], color=color_scheme[i], linewidth=3)
+            plt.plot(ut.unif_partition(mod.lims[j+1]-mod.lims[j]), mod.C_h[mod.lims[j]:mod.lims[j+1],i], color=mod.color_scheme[i], linewidth=3)
 
-    fig.savefig(path_name + feature_map_title)
+    fig.savefig(mod.path_name + mod.feature_map_title)
     # save the figure to file
     plt.hold(False)
     plt.close(fig)
@@ -160,22 +161,25 @@ def browse_states(h, path_name, posterior_title, color_scheme):
     #for ax, i in zip(axes, xrange(l)):
     plt.close(fig)
 
-def print_bed(h, path_name, bed_title, m, ch, s):
+
+# look at decoding - multiply by s on original seq
+
+def print_bed(h, mod):
     l = len(h);
 
     bed_list = []
-    for i in range(m):
+    for i in range(mod.m_h):
         bed_list.append([])
 
     for i in range(l):
         if (i == 0):
             i_start = 0
         elif (i == l-1 or h[i] != h[i-1]):
-            bed_list[h[i-1]].append(("chr"+ch, i_start*100*s, i*100*s))
+            bed_list[h[i-1]].append(("chr"+mod.ch, i_start*100*mod.s, i*100*mod.s))
             i_start = i
 
-    for i in range(m):
-        f = open(path_name + bed_title + 'm = ' + str(m) + 'i = ' + str(i) + '.bed', 'w')
+    for i in range(mod.m_h):
+        f = open(mod.path_name + mod.bed_title + 'm = ' + str(mod.m_h) + 'i = ' + str(i) + '.bed', 'w')
         for ch, i_start, i_end in bed_list[i]:
             #base pair
             f.write(ch + '\t' + str(i_start) +'\t' + str(i_end) + '\n')
@@ -200,16 +204,16 @@ def plot_meth(axarr, coverage, methylated):
         axarr[i].fill_between(range(0,l*100,100), meth_rate)
         axarr[i].set_xlim([0, l*100])
 
-def plot_meth_full(axarr, coverage, methylated):
+def plot_meth_full(axarr, coverage, methylated, s):
     n_cells, l = np.shape(coverage)
     for i in range(n_cells):
         meth_rate = methylated[i,:].astype(float) / coverage[i,:]
-        axarr[3*i].fill_between(range(0,l*100,100), coverage[i,:])
+        axarr[3*i].fill_between(range(0,l*100*s,100), coverage[i,:])
         axarr[3*i].set_ylabel('coverage')
-        axarr[3*i+1].fill_between(range(0,l*100,100), methylated[i,:])
+        axarr[3*i+1].fill_between(range(0,l*100*s,100), methylated[i,:])
         axarr[3*i+1].set_ylabel('methylated')
-        axarr[3*i+2].fill_between(range(0,l*100,100), meth_rate)
-        axarr[3*i+2].set_xlim([0, l*100])
+        axarr[3*i+2].fill_between(range(0,l*100*s,100), meth_rate)
+        axarr[3*i+2].set_xlim([0, l*100*s])
 
 
 def plot_bed_only(bed_list):
@@ -237,7 +241,7 @@ def plot_m_and_c(coverage, methylated):
         axarr[3*i+2].fill_between(range(0,l*100,100), methylated[i,:].astype(float) / coverage[i,:])
     plt.show()
 
-def plot_meth_and_bed(coverage, methylated, bed_list, p_ch, bed_name, path_name, l, l_test):
+def plot_meth_and_bed(coverage, methylated, bed_list, mod):
     m = len(bed_list)
     n_cells = np.shape(coverage)[0]
     plt.figure()
@@ -251,24 +255,28 @@ def plot_meth_and_bed(coverage, methylated, bed_list, p_ch, bed_name, path_name,
 
     fig, axarr = plt.subplots(n_cells*3+m, 1, sharex=True)
     plt.hold(True)
-    plot_meth_full(axarr[:n_cells*3], coverage, methylated)
+    plot_meth_full(axarr[:n_cells*3], coverage, methylated, mod.s)
     plot_bed(axarr[n_cells*3:n_cells*3+m], bed_list)
     for i in range(m):
-        axarr[n_cells*3+i].set_ylabel(truncated_str(p_ch[:,i]))
+        axarr[n_cells*3+i].set_ylabel(mod.state_name_h[i])
 
-    fig.savefig(path_name + bed_name + 'contrast_m = ' + str(m) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test='+str(l_test) + '.pdf')
+    fig.savefig(mod.path_name + mod.bed_title + 'contrast_m = ' + str(m) + 'n_cells = ' + str(len(mod.ce_group))+'_l='+str(mod.l)+'_l_test='+str(mod.l_test) + '.pdf')
     plt.hold(False)
 
     plt.rcParams["figure.figsize"] = fig_size_temp
     plt.close(fig)
 
+def state_name(p_ch):
+    m = np.shape(p_ch)[1]
+    return [truncated_str(p_ch[:,i]) for i in range(m)]
+
 def truncated_str(s):
     return str(['%.3f' % i for i in s])
 
 
-def plot_meth_and_twobeds(coverage, methylated, bed_list_1, p_ch_1, bed_list_2, p_ch_2, bed_name, path_name, l, l_test):
-    l1 = len(bed_list_1)
-    l2 = len(bed_list_2)
+def plot_meth_and_twobeds(coverage, methylated, mod):
+    l1 = len(mod.bed_list_gt)
+    l2 = len(mod.bed_list_h)
     n_cells = np.shape(coverage)[0]
     plt.figure()
     # Get current size
@@ -285,65 +293,65 @@ def plot_meth_and_twobeds(coverage, methylated, bed_list_1, p_ch_1, bed_list_2, 
 
     for i in range(0, l1):
         axn = n_cells+i
-        plot_bed([axarr[axn]], [bed_list_1[i]])
-        axarr[axn].set_ylabel(truncated_str(p_ch_1[:,i]))
+        plot_bed([axarr[axn]], [mod.bed_list_gt[i]])
+        axarr[axn].set_ylabel(mod.state_name_gt[i])
 
     for i in range(0, l2):
         axn = n_cells+l1+1+i
-        plot_bed([axarr[axn]], [bed_list_2[i]])
-        axarr[axn].set_ylabel(truncated_str(p_ch_2[:,i]))
+        plot_bed([axarr[axn]], [mod.bed_list_h[i]])
+        axarr[axn].set_ylabel(mod.state_name_h[i])
 
-    fig.savefig(path_name + bed_name + 'l1 = ' + str(l1) + 'l2 = ' + str(l2) + 'n_cells = ' + str(n_cells)+'_l='+str(l)+'_l_test='+str(l_test))
+    fig.savefig(mod.path_name + mod.bed_title + 'l1 = ' + str(l1) + 'l2 = ' + str(l2) + 'n_cells = ' + str(n_cells)+'_l='+str(mod.l)+'_l_test='+str(mod.l_test))
     plt.hold(False)
     plt.rcParams["figure.figsize"] = fig_size_temp
     plt.close(fig)
 
-def print_doc_header(path_name, tex_name):
-    f = open(path_name+tex_name, 'w')
+def print_doc_header(mod):
+    f = open(mod.path_name+mod.tex_name, 'w')
     s = "\\documentclass{article}\n\\usepackage{epsfig}\n\\usepackage[export]{adjustbox}\n\\usepackage{caption}\n\\usepackage{subcaption}\n\\usepackage{fullpage}\n\\usepackage{commath}\n\\usepackage{amssymb}\n\\usepackage[space]{grffile}\n\\usepackage{float}\n\\begin{document}\n"
     f.write(s)
     f.close()
 
-def print_expt_setting(path_name, expt_name, tex_name):
+def print_expt_setting(mod):
     s1 = "\\begin{verbatim}\n"
     s2 = "\\end{verbatim}\n"
-    f = open(path_name+tex_name, 'a')
+    f = open(mod.path_name+mod.tex_name, 'a')
     f.write(s1)
-    f.write(expt_name)
+    f.write(mod.sec_title)
     f.write(s2)
     f.close()
 
-def print_table_header(path_name, tex_name):
-    f = open(path_name+tex_name, 'a')
+def print_table_header(mod):
+    f = open(mod.path_name+mod.tex_name, 'a')
     s = "\\begin{figure}[H]\n\\begin{tabular}{cc}\n"
     f.write(s)
     f.close()
 
-def print_fig_and(path_name, fig_name, tex_name):
-    f = open(path_name+tex_name, 'a')
-    s = "\\begin{subfigure}[t]{0.4\\textwidth}\n\\includegraphics[width=\\textwidth]{"+ fig_name + "}\n\\end{subfigure}&\n"
+def print_fig_and(mod):
+    f = open(mod.path_name+mod.tex_name, 'a')
+    s = "\\begin{subfigure}[t]{0.4\\textwidth}\n\\includegraphics[width=\\textwidth]{"+ mod.posterior_title + "}\n\\end{subfigure}&\n"
     f.write(s)
     f.close()
 
-def print_fig_bs(path_name, fig_name, tex_name):
-    f = open(path_name+tex_name, 'a')
-    s = "\\begin{subfigure}[t]{0.4\\textwidth}\n\\includegraphics[width=\\textwidth]{"+ fig_name + "}\n\\end{subfigure}\\\\\n"
+def print_fig_bs(mod):
+    f = open(mod.path_name+mod.tex_name, 'a')
+    s = "\\begin{subfigure}[t]{0.4\\textwidth}\n\\includegraphics[width=\\textwidth]{"+ mod.feature_map_title + "}\n\\end{subfigure}\\\\\n"
     f.write(s)
     f.close()
 
-def print_table_aheader(path_name, tex_name):
-    f = open(path_name+tex_name, 'a')
+def print_table_aheader(mod):
+    f = open(mod.path_name+mod.tex_name, 'a')
     s = "\\end{tabular}\n\\end{figure}\n"
     f.write(s)
     f.close()
 
-def print_doc_aheader(path_name, tex_name):
-    f = open(path_name+tex_name, 'a')
+def print_doc_aheader(mod):
+    f = open(mod.path_name+mod.tex_name, 'a')
     s = "\\end{document}\n"
     f.write(s)
     f.close()
-    os.chdir(path_name)
-    os.system("pdflatex "+tex_name)
+    os.chdir(mod.path_name)
+    os.system("pdflatex "+mod.tex_name)
     os.system("cd ..")
 
 def save_moments(P_21, P_31, P_23, P_13, P_123, ch, ce_group, s, ctxt_group, l, path_name):

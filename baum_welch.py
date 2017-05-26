@@ -20,7 +20,9 @@ def baum_welch(coverage, methylated, p_0, T_0, pi_0, iters=10):
         gamma, xi = expectation(alpha, beta, T, p_x_h)
         p, T, pi = maximization(gamma, xi, coverage, methylated)
 
-        print 'p = ', p, 'T = ', T, 'pi = ', pi
+        print 'p = \n', p
+        print 'T = \n', T
+        print 'pi = \n', pi
 
     return p, T, pi
 

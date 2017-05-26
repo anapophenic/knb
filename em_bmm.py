@@ -16,10 +16,8 @@ def posterior_group(cov, met, p, pi):
     post = ut.normalize_v(post)
     return post
 
-def em_bmm_group(coverage, methylated, k, iters=10):
+def em_bmm_group(coverage, methylated, p, pi, iters=10):
     r, l = np.shape(coverage)
-    p = np.random.rand(r, k)
-    pi = ut.normalize_v(np.random.rand(k))
 
     post = np.zeros((k,l))
     for it in range(iters):

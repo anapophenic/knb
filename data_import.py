@@ -118,9 +118,9 @@ def stats_from_seq(coverage, methylated):
 
     return a, p_c
 
-def data_prep_ctxt_ce(ctxt_group, ce_group, s, ch):
-
-    coverage, methylated = seq_prep_ctxt_ce(ce_group, ch, None, s, ctxt_group);
+def data_prep_ctxt_ce(mod):
+    print 'Reading Data..'
+    coverage, methylated = seq_prep_ctxt_ce(mod.ce_group, mod.ch, None, mod.s, mod.ctxt_group);
     N, x_zipped = triples_from_seq(coverage, methylated, 'explicit')
     a, p_c = stats_from_seq(coverage, methylated)
 
