@@ -42,6 +42,9 @@ def maximization(gamma, xi, coverage, methylated):
     cov_all = coverage.dot(gamma.T);
     p = met_all / cov_all
 
+    print 'met_all = \n', met_all / l
+    print 'cov_all = \n', cov_all / l
+
     return p, T, pi
 
 def expectation(alpha, beta, T, p_x_h):

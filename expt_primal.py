@@ -55,14 +55,6 @@ def data_select(mod):
 
     return coverage_train, methylated_train, coverage_test, methylated_test, x_importance_weighted
 
-def reduce_nonzero(mod):
-    coverage_test_sum = np.sum(mod.coverage_test, axis=0)
-    mod.nz_idx = (coverage_test_sum != 0)
-    coverage_test_reduced = mod.coverage_test[:,mod.nz_idx]
-    methylated_test_reduced = mod.methylated_test[:,mod.nz_idx]
-
-    return coverage_test_reduced, methylated_test_reduced
-
 def print_header(mod):
     mod.sec_title = vis.get_sec_title(mod)
     vis.print_expt_setting(mod)
@@ -85,12 +77,12 @@ def estimate_observation(mod):
         C_h = td_tpm.tpm(mod.P_21, mod.P_31, mod.P_23, mod.P_13, mod.P_123, mod.m_h)
     elif mod.td_alg == 'em_bmm':
         p_c = mod.p_c[:,:100]
-        p_ch, pi_h = eb.em_bmm_group(mod.coverage_train, mod.methylated_train, p_ch, pi_h)
-        C_h = fm.expected_fm_p_c_group(mod.phi, mod.n, p_c, p_ch)
+        p_ch_h, pi_h = eb.em_bmm_group(mod.coverage_train, mod.methylated_train, p_ch_h, pi_h)
+        C_h = fm.expected_fm_p_c_group(mod.phi, mod.n, p_c, p_ch_h)
     elif mod.td_alg == 'baum_welch':
         p_c = mod.p_c[:,:100]
-        p_ch, T_h, pi_h = bw.baum_welch(mod.coverage_train, mod.methylated_train, p_ch_h, T_h, pi_h, 1)
-        C_h = fm.expected_fm_p_c_group(mod.phi, mod.n, p_c, p_ch)
+        p_ch_h, T_h, pi_h = bw.baum_welch(mod.coverage_train, mod.methylated_train, p_ch_h, T_h, pi_h, 10)
+        C_h = fm.expected_fm_p_c_group(mod.phi, mod.n, p_c, p_ch_h)
 
     return p_ch_h, C_h, T_h, pi_h
 
@@ -101,8 +93,8 @@ def postprocess(mod):
     else:
         C_h = pp.postprocess_m(mod.C_h)
         if mod.pp_alg == 'pos':
-            C_h, T_h, pi_h = pp.refine_positify(C_h, mod.P_21, mod.P_31, mod.P_23, mod.P_13, mod.P_123, mod.m)
-        elif mod.pp_alg == 'pos_als':
+            C_h, T_h, pi_h = pp.refine_positify(C_h, mod.P_21, mod.P_31, mod.P_23, mod.P_13, mod.P_123)
+        elif mod.pp_alg == 'pos_ls':
             T_h, pi_h = pp.refine_nmf(mod.P_21, C_h)
         elif mod.pp_alg == 'pos_als_iter':
             C_h, T_h, pi_h = pp.refine_als_p21(mod.P_21, C_h)
@@ -138,7 +130,7 @@ def print_params(mod):
 
 def print_decoding(coverage, methylated, h_dec_p, mod, option_str):
     mod.posterior_title = mod.fig_title + 'l_test = ' + str(mod.l_test) + option_str + '_posterior.pdf'
-    mod.bed_title = mod.fig_title + 'l_test = ' + str(mod.l_test) + option_str + '_bed'
+    mod.bed_title = vis.get_bed_title_header(mod) + 'l_test = ' + str(mod.l_test) + option_str + '_bed'
 
     bed_list = vis.print_bed(h_dec_p, mod)
     vis.plot_meth_and_bed(coverage, methylated, bed_list, mod)
@@ -152,7 +144,7 @@ def decode(mod):
 
     print_decoding(mod.coverage_test, mod.methylated_test, mod.h_dec_p, mod, '')
 
-    mod.coverage_test_reduced, mod.methylated_test_reduced = reduce_nonzero(mod)
+    mod.coverage_test_reduced, mod.methylated_test_reduced = ut.reduce_nonzero(mod.coverage_test, mod.methylated_test)
     mod.h_dec_p_reduced = mod.h_dec_p[mod.nz_idx]
     print_decoding(mod.coverage_test_reduced, mod.methylated_test_reduced, mod.h_dec_p_reduced, mod, '_reduced_')
 
@@ -180,7 +172,7 @@ def real_expt(mod):
             mod.coverage_train, mod.methylated_train, mod.coverage_test, mod.methylated_test, mod.x_importance_weighted = data_select(mod)
 
             for mod.phi in mod.phis:
-                mod.P_21, mod.P_31, mod.P_23, mod.P_13, mod.P_123 = mc.moments_cons_importance_weighted(mod);
+                #mod.P_21, mod.P_31, mod.P_23, mod.P_13, mod.P_123 = mc.moments_cons_importance_weighted(mod);
                 #vis.save_moments(P_21, P_31, P_23, P_13, P_123, ch, ce_group, s, ctxt_group, l, path_name)
                 print_header(mod)
 
@@ -204,8 +196,8 @@ def real_expt(mod):
 # bed_name_gtd = 'gt_decoder'
 
 def get_bed(mod, option_str, p_ch_h, h_seq):
-    mod.bed_title = mod.fig_title + 'l_test = ' + str(mod.l_test) + option_str + '_bed'
     mod.m_h = np.shape(p_ch_h)[1]
+    mod.bed_title = vis.get_bed_title_header(mod) + 'l_test = ' + str(mod.l_test) + option_str + '_bed'
     bed_list = vis.print_bed(h_seq, mod)
     state_name = vis.state_name(p_ch_h)
     return bed_list, state_name
@@ -224,9 +216,9 @@ def synthetic_matching(mod):
     T_h = mod.T_h[:, col_ind][col_ind, :]
     C_h = mod.C_h[:, col_ind]
 
-    print 'm_hat = \n' + str(mod.m_h)
-    print '\nC_h = \n' + str(C_h)
-    print '\nT_h = \n' + str(T_h) + '\npi_h = \n' + str(pi_h) + '\np_ch_h = \n' + str(p_ch_h) + '\n'
+    #print 'm_hat = \n' + str(mod.m_h)
+    #print '\nC_h = \n' + str(C_h)
+    #print '\nT_h = \n' + str(T_h) + '\npi_h = \n' + str(pi_h) + '\np_ch_h = \n' + str(p_ch_h) + '\n'
     print '|p_ch_h - p_ch| = ', np.linalg.norm(p_ch_h - mod.p_ch)
     print '|T_h - T| = ', np.linalg.norm(T_h - mod.T)
     print '|pi_h - pi| = ', np.linalg.norm(pi_h - mod.pi)
@@ -250,6 +242,8 @@ def synthetic_expt(mod):
     mod.P_21, mod.P_31, mod.P_23, mod.P_13, mod.P_123 = mc.moments_cons_importance_weighted(mod);
 
     mod.fig_title = 'synthetic'
+    mod.td_alg = ''
+    mod.pp_alg = ''
 
     mod.bed_list_gt, mod.state_name_gt = get_bed(mod, 'gt_state', mod.p_ch, mod.h_test)
     synthetic_print_decoding(mod, mod.p_ch, mod.T, mod.pi, 'gt_decoder')
@@ -327,7 +321,7 @@ if __name__ == '__main__':
     mod.cell_groups = [['E', 'V']]
     # n should be divisible by cell_groups * ctxt_groups
     mod.n = 50
-    mod.ms = range(2, 10)
+    mod.ms = range(6, 7)
     #order: CC, CT, CA, CG
     #ctxt_groups = [[range(0,4)], [range(4,8)], [range(8,12)], [range(12,16)], [range(0,4), range(4,8), range(8,12), range(12, 16)]]
     #ctxt_groups = [[range(8,12), range(12,16)]]
@@ -340,18 +334,20 @@ if __name__ == '__main__':
     #td_algs = ['em_bmm', 'baum_welch']
     #pp_algs = ['pos', 'pos_als', 'pos_als_iter','no']
 
-    mod.path_name = '0525/'
+    mod.path_name = '0527/'
     mod.tex_name = 'result.tex'
     #segments = range(1, 6)
     #segments = range(1,5)
     mod.segments = [1]
-    mod.lengths = [2000]
+    mod.lengths = [10000]
     #, 20000, 40000, 80000, 160000, 320000
-    mod.lengths_test = [1000]
+    mod.lengths_test = [10000]
     #phis = [mc.phi_beta_shifted_cached, mc.phi_binning_cached]
-    #phis = [fm.phi_beta_shifted_cached]
     mod.phis = [fm.phi_beta_shifted_cached_listify]
-    mod.selections = [('baum_welch', 'no'), ('als', 'pos_als')]
+    #mod.phis = [fm.phi_binning_cached_listify]
+    #fm.phi_beta_shifted_cached_listify
+    #mod.selections = [('baum_welch', 'no'), ('em_bmm', 'pos_ls')]
+    mod.selections = [('tpm', 'pos'), ('als', 'pos')]
     real_expt(mod)
 
     #real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, ctxt_groups, 0, path_name, tex_name)
@@ -376,17 +372,19 @@ if __name__ == '__main__':
     mod = model()
     mod.ch = '1'
     mod.s = 1
-    mod.phi = fm.phi_beta_shifted_cached_listify;
+    mod.ce_group = ['E','V']
+    mod.ctxt_group = [range(12,16)]
+    mod.phi = fm.phi_binning_cached_listify;
     mod.path_name = 'synthetic/'
     mod.n = 30
     mod.N = 100
-    mod.l = 1000
+    mod.l = 100000
     mod.l_test = 500;
     mod.min_sigma_t = 0.8
     mod.r = 2
     mod.m = 4
     mod.ms = range(4,5,1)
-    mod.selections = [('baum_welch', 'no'), ('als', 'pos_als')]
+    mod.selections = [('tpm', 'pos')]
 
     synthetic_expt(mod)
     '''

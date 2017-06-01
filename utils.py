@@ -61,3 +61,11 @@ def truncated_poisson_pmf(mu, N):
     p = normalize_v(p)
 
     return p
+
+def reduce_nonzero(c_seq, m_seq):
+    c_seq_sum = np.sum(c_seq, axis=0)
+    mod.nz_idx = (c_seq_sum != 0)
+    c_seq_reduced = c_seq[:,mod.nz_idx]
+    m_seq_reduced = m_seq[:,mod.nz_idx]
+
+    return c_seq_reduced, m_seq_reduced

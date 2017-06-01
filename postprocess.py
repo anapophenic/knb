@@ -52,7 +52,7 @@ def make_positive_m(M):
     return M
 
 
-def refine_positify(O_h, P_21, P_31, P_23, P_13, P_123, m):
+def refine_positify(O_h, P_21, P_31, P_23, P_13, P_123):
 
     print 'raw O_h = ', O_h
 

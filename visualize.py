@@ -20,6 +20,11 @@ def directory_setup(mod):
     except:
         os.mkdir(mod.path_name + '/figs')
 
+    try:
+        os.stat(mod.path_name + '/beds')
+    except:
+        os.mkdir(mod.path_name + '/beds')
+
 '''
 def print_v(p, vec_title, state_labels):
     print_m(np.array([p.tolist()]), vec_title, state_labels)
@@ -33,11 +38,12 @@ def print_m(M, mat_title, state_labels):
     plt.close(fig)
 '''
 def show_m(mat, m_title, path_name, state_name, is_T):
-    fig_size = plt.rcParams["figure.figsize"]
-    fig_size[0] = 10
-    fig_size[1] = 10
-    plt.rcParams["figure.figsize"] = fig_size
     m = len(state_name)
+    fig_size = plt.rcParams["figure.figsize"]
+    fig_size[0] = 10+m
+    fig_size[1] = 10+m
+    plt.rcParams["figure.figsize"] = fig_size
+
 
     plt.hold(True)
     fig, ax = plt.subplots(1, 1)
@@ -63,13 +69,18 @@ def group_name(ce_group):
     return s
 
 def get_fig_title(mod):
+    return 'figs/' + get_spec_title(mod)
 
-    return 'figs/' + 'ce_group = ' + group_name(mod.ce_group) + \
-           '_chr = ' + mod.ch + '_l = ' + str(mod.l) + \
-           '_s = ' + str(mod.s) + '_m_h = ' + str(mod.m_h) + \
-           '_n = ' + str(mod.n) + '_phi = ' + fm.phi_name(mod.phi) + \
-           '_ctxt_group = ' + bh.ctxt_name(mod.ctxt_group) + \
-           '_' + mod.td_alg + '_' + mod.pp_alg
+def get_bed_title_header(mod):
+    return 'beds/' + get_spec_title(mod)
+
+def get_spec_title(mod):
+    return 'ce_group = ' + group_name(mod.ce_group) + \
+       '_chr = ' + mod.ch + '_l = ' + str(mod.l) + \
+       '_s = ' + str(mod.s) + '_m_h = ' + str(mod.m_h) + \
+       '_n = ' + str(mod.n) + '_phi = ' + fm.phi_name(mod.phi) + \
+       '_ctxt_group = ' + bh.ctxt_name(mod.ctxt_group) + \
+       '_' + mod.td_alg + '_' + mod.pp_alg
 
 def get_sec_title(mod):
 
@@ -179,7 +190,7 @@ def print_bed(h, mod):
             i_start = i
 
     for i in range(mod.m_h):
-        f = open(mod.path_name + mod.bed_title + 'm = ' + str(mod.m_h) + 'i = ' + str(i) + '.bed', 'w')
+        f = open(mod.path_name + '' + mod.bed_title + 'm = ' + str(mod.m_h) + 'i = ' + str(i) + '.bed', 'w')
         for ch, i_start, i_end in bed_list[i]:
             #base pair
             f.write(ch + '\t' + str(i_start) +'\t' + str(i_end) + '\n')
@@ -301,7 +312,7 @@ def plot_meth_and_twobeds(coverage, methylated, mod):
         plot_bed([axarr[axn]], [mod.bed_list_h[i]])
         axarr[axn].set_ylabel(mod.state_name_h[i])
 
-    fig.savefig(mod.path_name + mod.bed_title + 'l1 = ' + str(l1) + 'l2 = ' + str(l2) + 'n_cells = ' + str(n_cells)+'_l='+str(mod.l)+'_l_test='+str(mod.l_test))
+    fig.savefig(mod.path_name + mod.bed_title + 'l1 = ' + str(l1) + 'l2 = ' + str(l2) + 'n_cells = ' + str(n_cells)+'_l='+str(mod.l)+'_l_test='+str(mod.l_test) + '.pdf')
     plt.hold(False)
     plt.rcParams["figure.figsize"] = fig_size_temp
     plt.close(fig)
