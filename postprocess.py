@@ -1,7 +1,7 @@
 import cvxpy as cvx
 import numpy as np
 import visualize as vis
-from utils import normalize_m, normalize_v
+from utils import normalize_m, normalize_v, row_col_normalize_l1
 
 #Smoothing on the estimated probabilities
 def postprocess_m(M):
@@ -52,41 +52,28 @@ def make_positive_m(M):
     return M
 
 
-def normalize_m_all(p):
-    return p / float(np.sum(p))
+def refine_positify(O_h, P_21, P_31, P_23, P_13, P_123):
 
-def row_col_normalize_l1(A):
-    return A / np.sum(A)
-
-
-def refine_positify(O_h, P_21, P_31, P_23, P_13, P_123, m):
-
-    print 'raw O_h = '
-    print O_h
+    print 'raw O_h = ', O_h
 
     T_h = np.linalg.pinv(O_h).dot(P_21.dot(np.linalg.pinv(O_h.T)))
-    print 'raw T_h = '
-    print T_h
+    print 'raw T_h = ', T_h
 
     pi_h = np.sum(T_h, axis = 0);
-    print 'raw pi_h = '
-    print pi_h
+    print 'raw pi_h = ', pi_h
 
     pi_h = postprocess_v(pi_h)
     T_h = postprocess_m(T_h)
 
-    vis.show_T(T_h, 'T_'+str(m), 'merge_ctxts/')
-    vis.show_pi(pi_h, 'pi_'+str(m), 'merge_ctxts/')
+    #vis.show_T(T_h, 'T_'+str(m), 'merge_ctxts/')
+    #vis.show_pi(pi_h, 'pi_'+str(m), 'merge_ctxts/')
 
+    #T_h, pi_h = refine_nmf(P_21, O_h)
+    #vis.show_T(T_h, 'T_p_'+str(m), 'merge_ctxts/')
+    #vis.show_pi(pi_h, 'pi_p_'+str(m), 'merge_ctxts/')
 
-    T_h, pi_h = refine_nmf(P_21, O_h)
-
-    vis.show_T(T_h, 'T_p_'+str(m), 'merge_ctxts/')
-    vis.show_pi(pi_h, 'pi_p_'+str(m), 'merge_ctxts/')
-
-
-    print T_h
-    print pi_h
+    #print T_h
+    #print pi_h
 
     O_h = postprocess_m(O_h)
 
@@ -116,7 +103,7 @@ def refine_nmf(P_21, O_h):
 
     return T, pi
 
-def refine_als_p21(P_21, O_init, iters=30):
+def refine_als_p21(P_21, O_init, iters=10):
     n = np.shape(P_21)[0]
     m = np.shape(O_init)[1]
 
@@ -157,7 +144,11 @@ def refine_als_p21(P_21, O_init, iters=30):
         else:
             H_21 = H_21.value
 
-    return O_avg, H_21
+    H_21 = np.asarray(H_21)
+    pi = np.sum(H_21, axis=0)
+    T = normalize_m(H_21)
+
+    return  np.asarray(O_avg), np.asarray(T), np.asarray(pi)
 
 if __name__ == '__main__':
     C_h = np.eye(4,2)

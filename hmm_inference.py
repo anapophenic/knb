@@ -1,9 +1,11 @@
 import data_import as di
 import data_generator as dg
 import moments_cons as mc
+import feature_map as fm
 import binom_hmm as bh
 import numpy as np
 from scipy import stats
+import visualize as vis
 
 '''
 Throughout we use the following conventions:
@@ -114,6 +116,7 @@ def viterbi_decode(l, pi, T, p_x_h):
 
 if __name__ == '__main__':
 
+
     #Synthetic Dataset:
     n = 20
     m = 6
@@ -169,6 +172,7 @@ if __name__ == '__main__':
     print h_dec_v
 
     #(coverage, methylated) = seq_prep(filename, l, s, ctxt);
+    
 
 
     '''
@@ -186,36 +190,43 @@ if __name__ == '__main__':
     filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_' + ce + '_chr' + ch + '_binsize100.mat';
 
     #ctxt = range(16)
-    ctxt = range(12, 16)
+    ctxt_group = [range(12, 16)]
+    ce_group = ['E', 'V']
     segments = range(1, 6)
-    s = segments[0];
+    s = 5;
 
-    lengths = [320000]
-    l = lengths[0];
+    l = 0
+    l_test = 10000
 
-    phi = mc.phi_beta_shifted_cached;
+    phi = fm.phi_beta_shifted_cached;
     n = 20
     m = 4
 
-    N, X_zipped, a = di.data_prep(filename,'explicit', None, s, ctxt);
-    X_importance_weighted = di.prefix(X_zipped, l)
-    P_21, P_31, P_23, P_13, P_123 = mc.moments_cons_importance_weighted(X_importance_weighted, phi, N, n);
-    C_h, T_h, pi_h = mc.estimate(P_21, P_31, P_23, P_13, P_123, m)
-    p_h = mc.get_p(phi, N, n, C_h, a)
+    coverage, methylated, N, x_zipped, a = di.data_prep_ctxt_ce(ctxt_group, ce_group, s, ch);
 
     #T_h = np.array([[ 0.8993886, 0.28601558],[0.1006114 , 0.71398442]])
     #pi_h = np.array([ 0.73962056, 0.26037944])
     #p_h = np.array([ 0.92750509,  0.30209752])
 
-    print T_h
-    print pi_h
-    print p_h
+    path_name = 'notrain/'
+    fig_title = 'viterbi_m = ' + str(m)
 
-    l_i = 320000
-    coverage, methylated = di.seq_prep(filename, l_i, s, ctxt);
+    T_h = np.eye(m) * 0.8 + 0.2 / m * np.ones((m,m))
+    p_ch = np.array([[0.25, 0.25, 0.75, 0.75], [0.25, 0.75, 0.25, 0.75]])
+    pi_h = np.ones(m) / m
 
-    p_x_h = lambda i: bh.p_x_h_binom(p_h, coverage, methylated, i)
-    h_dec_p = posterior_decode(l_i, pi_h, T_h, p_x_h);
+    coverage_test = coverage[:,:l_test]
+    methylated_test = methylated[:, :l_test]
 
-    print h_dec_p.tolist()
+    p_x_h = lambda i: bh.p_x_ch_binom(p_ch, coverage_test, methylated_test, i)
+    h_dec_p = viterbi_decode(l_test, pi_h, T_h, p_x_h);
+
+    color_scheme = vis.get_color_scheme(h_dec_p, m)
+    posterior_title = fig_title + 'l_test = ' + str(l_test) + '_posterior.pdf'
+    bed_title = fig_title + 'l_test = ' + str(l_test) + '_bed'
+    vis.browse_states(h_dec_p, path_name, posterior_title, color_scheme)
+    bed_list = vis.print_bed(h_dec_p, path_name, bed_title, m, ch, s)
+    bed_name = fig_title
+    vis.plot_meth_and_bed(coverage_test, methylated_test, bed_list, p_ch, bed_name, path_name, l, l_test)
+    #print h_dec_p.tolist()
     '''

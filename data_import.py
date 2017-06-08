@@ -2,6 +2,7 @@ import scipy.io
 import numpy as np
 import binom_hmm as bh
 from collections import Counter
+import visualize as vis
 
 def importance_weightify(x_zipped, l):
     return Counter(x_zipped[:l]);
@@ -40,6 +41,8 @@ def seq_prep_ctxt(ce, ch, l=None, s=1, ctxt_group=[range(16)]):
     r = len(ctxt_group)
     l, dim = np.shape(coverage)
 
+    print l, dim
+
     #vertical_groups = [xrange(i*s,(i+1)*s) for i in range(l/s)]
     #coverage_h = np.array([group_vertical(coverage, vertical_groups[j]) for j in range(l/s)])
     #methylated_h = np.array([group_vertical(methylated, vertical_groups[j]) for j in range(l/s)])
@@ -67,14 +70,15 @@ def seq_prep_ctxt_ce(ce_group, ch, l=None, s=1, ctxt_group=[range(16)]):
     l_min = 100000000;
     for coverage in coverage_list:
         l = np.shape(coverage)[1];
+        print l
         if l <= l_min:
             l_min = l
 
     print 'l_min = ' + str(l_min)
 
     for i in range(len(coverage_list)):
-        coverage_list[i] = coverage_list[i][:,:l_min];
-        methylated_list[i] = methylated_list[i][:,:l_min];
+        coverage_list[i] = coverage_list[i][:,-l_min:];
+        methylated_list[i] = methylated_list[i][:,-l_min:];
 
     coverage_all = np.vstack(tuple(coverage_list));
     methylated_all = np.vstack(tuple(methylated_list));
@@ -93,23 +97,34 @@ def triples_from_seq(coverage, methylated, formating):
   r, l = np.shape(coverage)
   x = [tuple([bh.to_x(coverage[c,i], methylated[c,i], N) for c in range(r)]) for i in range(l)]
 
-  # compute E[1/(n+2)]
-  a = np.sum(1.0 / (coverage+2), axis = 1) / l
-
   if formating=='explicit':
     x_zipped = zip(x[0:l], x[1:l+1], x[2:l+2])
-    return N, x_zipped, a
+    return N, x_zipped
   else:
     X = np.vstack((x[0:l], x[1:l+1], x[2:l+2])).T
-    return N, X, a
+    return N, X
 
+def stats_from_seq(coverage, methylated):
+    r, l = np.shape(coverage)
+    # compute E[1/(n+2)]
+    a = np.sum(1.0 / (coverage+2), axis = 1) / l
 
-def data_prep_ctxt_ce(ctxt_group, ce_group, s, ch):
+    N = np.amax(coverage)
+    p_c = np.zeros((r, N+1))
+    for i in range(r):
+        hist = dict(Counter(coverage[i,:]));
+        for k, v in hist.iteritems():
+            p_c[i,k] = v / float(l)
 
-    coverage, methylated = seq_prep_ctxt_ce(ce_group, ch, None, s, ctxt_group);
-    N, x_zipped, a = triples_from_seq(coverage, methylated, 'explicit')
+    return a, p_c
 
-    return coverage, methylated, N, x_zipped, a
+def data_prep_ctxt_ce(mod):
+    print 'Reading Data..'
+    coverage, methylated = seq_prep_ctxt_ce(mod.ce_group, mod.ch, None, mod.s, mod.ctxt_group);
+    N, x_zipped = triples_from_seq(coverage, methylated, 'explicit')
+    a, p_c = stats_from_seq(coverage, methylated)
+
+    return coverage, methylated, N, x_zipped, a, p_c
 
 #def data_prep(filename, formating='explicit', l=None, s=1, ctxts=[range(16)]):
 """
@@ -135,13 +150,24 @@ a: correction term \E[1/(n+2)] used in explicit feature map
 
 if __name__ == '__main__':
 
-  filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_E1_chrY_binsize100.mat'
+    ctxt_group = [range(12,16)]
+    ce_group = ['E']
+    s = 1
+    ch = '1'
 
-  N, X, a = data_prep(filename, ctxt = range(12,16));
-  print N
-  print X
-  print a
+    coverage, methylated, N, x_zipped, a, p_c = data_prep_ctxt_ce(ctxt_group, ce_group, s, ch);
 
+    cov_0 = coverage[0,:]
+    vis.print_hist(cov_0[cov_0 != 0], p_c)
+
+
+
+  #filename = 'Data_Intact/cndd/emukamel/HMM/Data/Binned/allc_AM_E1_chrY_binsize100.mat'
+
+  #N, X, a = data_prep(filename, ctxt = range(12,16));
+  #print N
+  #print X
+  #print a
 
   #print mat
   #print mat['mc']

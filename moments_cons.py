@@ -30,9 +30,12 @@ def moments_cons(X, phi, N, n):
 
     return P_21, P_31, P_23, P_13, P_123
 
+def moments_cons_importance_weighted(mod):
+    return moments_cons_importance_weighted_indirect(mod.x_importance_weighted, mod.phi, mod.N, mod.n)
 
-def moments_cons_importance_weighted(X_iw, phi, N, n):
-
+def moments_cons_importance_weighted_indirect(X_iw, phi, N, n):
+    print 'phi = \n' + fm.phi_name(phi) + '\n'
+    print 'Constructing Moments..'
     P_21 = np.zeros((n,n));
     P_31 = np.zeros((n,n));
     P_23 = np.zeros((n,n));
@@ -76,7 +79,6 @@ def moments_cons_importance_weighted(X_iw, phi, N, n):
     '''
 
 def moments_gt(O, phi, N, n, T, initDist):
-
 
     C = fm.gt_obs(phi, N, n, O);
 
