@@ -1,0 +1,66 @@
+\section{Preliminaries}
+
+\subsection{The Probabilistic Model}
+
+We are given a sequence $\cbr{x_t = (c_t, \mu_t)}_{t=1}^l$, where at each position $t$, the coverage is an nonnegative integer $c_t \in \cbr{0,1,\ldots,N}$ and the methylation count is $\mu_t \in \cbr{0,1,\ldots,c_t}$. We model the data using a binomial hidden Markov model, that is, the underlying dynamics of the hidden states is driven by a Markov chain $\cbr{h_t}$, where $h_t \in [m]$. For each hidden state $h \in [m]$, an average methylation probability $p_h \in [0,1]$ is associated with it.
+Given $c_t$ and $h_t$, $\mu_t$ is drawn from a binomial distribution, with the mean parmeter $p = p_h$.
+Formally,
+\[ \mu_t | c_t, h_t \sim \bin(c_t, p_{h_t}) \]
+
+Therefore, The binomial HMM can be summarized by parameters $(\pi, T, p)$, where $\pi \in \R^m$ is the initial probability distribution $(\P(h_1 = i))_{m \times 1}$ and $T \in \R^{m \times m}$ is the transition matrix of the Markov chain $(\P(h_{t+1} = i | h_t = j))_{m \times m}$. To avoid notation clutter, we drop the time indices $t$ if they are the same among all the variables appeared in a formula.
+
+\subsection{Matrix and Tensor Notations}
+TODO: rewrite this part
+A third-order tensor $M \in \R^{n_1} \otimes \R^{n_2} \otimes \R^{n_3}$ is a $3$-dimensional array with $n_1 n_2 n_3$ entries, with its $(i_1, i_2, i_3)$-th entry denoted as $M_{i_1, i_2, i_3}$.
+
+Given $n_i \times 1$ vectors $v_i$, $i = 1, 2, 3$, their tensor product, denoted by $v_1 \otimes v_2 \otimes v_3$ is the $n_1 \times n_2 \times n_3$ tensor whose $(i_1, i_2, i_3)$-th entry is $(v_1)_{i_1} (v_2)_{i_2} (v_3)_{i_3}$. A tensor that can be expressed as the tensor product of a set of vectors is called a rank $1$ tensor. A tensor $M$ is symmetric if and only if for any permutation $\pi: [3] \to [3]$, $M_{i_1, i_2, i_3} = M_{\pi(i_1), \pi(i_2), \pi(i_3)}$.
+
+Let $M \in \R^{n_1} \otimes \R^{n_2} \otimes \R^{n_3}$. If $V_i \in \R^{n_i \times m_i}$, then $M(V_1, V_2, V_3)$ is a tensor of size $m_1 \times m_2 \times m_3$, whose $(i_1, i_2, i_3)$-th entry is: $M(V_1, V_2, V_3)_{i_1, i_2, i_3} = \sum_{j_1, j_2, j_3} M_{j_1, j_2, j_3} (V_1)_{j_1,i_1} (V_2)_{j_2, i_2} (V_3)_{j_3,i_3}$.
+%\js{Isn't $V_i \in \R^{n_i \times m_i}$?}
+
+Since a matrix is a order-2 tensor, we also use the following shorthand to denote matrix multiplication. Let $M \in \R^{n_1} \otimes \R^{n_2}$. If $V_i \in \R^{m_i \times n_i}$, then $M(V_1, V_2)$ is a matrix of size $m_1 \times m_2$, whose $(i_1, i_2)$-th entry is: $M(V_1, V_2)_{i_1, i_2} = \sum_{j_1, j_2} M_{j_1, j_2} (V_1)_{j_1,i_1} (V_2)_{j_2, i_2}$. This is equivalent to $V_1^{\top} M V_2$.
+
+
+\subsection{Basic Spectral Method for HMMs}
+In paper~\cite{AGHKT12}, a spectral algorithm of parameter recovery for hidden Markov model is proposed.
+Its main idea is to reduce the problem to a symmetric orthogonal tensor decompositon problem. Here we give a brief overview in our context.
+
+Basic Tensor Structure: In hidden Markov model, it is known that observations $(x_{t-1}, x_t, x_{t+1})$ are conditionally independent given hidden state $h_t$. Define
+$P_{i,j} := \E[x_i \otimes x_j]$ (where $i,j$ are distinct elements from $[3]$) and $T := \E[x_1 \otimes x_2 \otimes x_3]$. Define $C_i = \E[x_i | h_2]$ for $i \in [3]$,
+we have that
+\[ P_{i,j} = C_i \diag(w) C_i^T = \sum_{l=1}^m w_l (C_i)_l \otimes (C_j)_l \]
+and
+\[ T = \sum_{l=1}^m w_l (C_1)_l \otimes (C_2)_l \otimes (C_3)_l \]
+
+Symmetrization: define matrix $S_1 := P_{2,3} P_{1,3}^{\dagger}$ and $S_3 := P_{2,1} P_{3,1}^{\dagger}$. It is known that $S_1 = C_2 C_1^{\dagger}$, and
+$S_3 = C_2 C_3^{\dagger}$. Now define
+\[ G := T(S_1, I, S_3) = \sum_{l=1}^m w_l (C_2)_l \otimes (C_2)_l \otimes (C_2)_l = \sum_{l=1}^m w_l (C_2)_l^{\otimes 3} \]
+It can be seen that $G$ is a symmetric tensor.
+
+Orthogonalization: define matrix $M = S_3 P_{3,2}$. It is known that $M = \sum_{l=1}^m w_l (C_2)_l \otimes (C_2)_l$.
+We perform an SVD over $M = U_m S_m U_m^T$, getting matrix $W = U_m S_m^{-1/2}$. It can be seen that $W^T M W = I$.
+Now we perform linear transformation over $G$, getting tensor $H = T(M, M, M) = \sum_{l=1}^m w_l v_l^{\otimes 3}$, where
+$v_l = W^T (C_2)_l$ are orthogonal unit vectors.
+This is called a {\em symmetric orthogonal} decomposition.
+
+Tensor Power Method: The next step is to perform symmetric orthogonal decomposition to a tensor $H$.
+We start with a random vector $v_0$. We keep performing the iteration $v_{t+1} = T(v_t, v_t, I)$ until $\cbr{v_t}$ converges.
+\begin{algorithm}
+\caption{Tensor Power Method}
+\begin{algorithmic}
+\STATE input: tensor $T = \sum_{l=1}^m w_l v_l \otimes v_l \otimes v_l$, number of components $m$, number of iterations per component $k$.
+\STATE output: estimated factors $\cbr{\hat{v}_l}_{l=1}^m$, estimated coefficients $\cbr{\hat{w}_l}_{l=1}^m$.
+\STATE $T_0 \gets T$
+\FOR{$l=1,2,\ldots,m$}
+    \STATE $v_l^0 \gets$ a vector drawn uniformly at random from $n$-dimensional unit sphere.
+    \FOR{$t=1,2,\ldots,k$}
+        \STATE $\tilde{v}_l^t \gets \frac{T_{l-1}(v_l^{t-1}, v_l^{t-1}, I)}{\|T_{l-1}(v_l^{t-1}, v_l^{t-1}, I)\|}$.
+    \ENDFOR
+    \STATE $\hat{v}_l \gets v_l^k$.
+    \STATE $\hat{w}_l \gets T_{l-1}(\hat{v}_l, \hat{v}_l, \hat{v}_l)$.
+    \STATE Deflation: $T_l \gets T_{l-1} - \hat{w}_l \hat{v}_l \otimes \hat{v}_l \otimes \hat{v}_l$.
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+Recovery: the row of $C_2$ can be obtained by the formula: $(C_2)_l = (W^T)^{\dagger} \hat{v}_l$.
