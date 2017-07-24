@@ -1,34 +1,21 @@
 \section{Introduction Outline}
 
-We work with DNA methylation data from brain cells.  The data in each location is contains coverage and methylation counts.
+We study the problem of segmenting DNA methylation data from brain cells. The data are represented by sequences - at each spatial location, two numbers, i.e. coverage and methylation counts, are observed.
+Our goal is to segment the sequences, where each segment represent certain state, indicating certain functional regions. One way to represent the states is their methylation probabilities, that is, probabilities of methylation given the states.
 
-Our goal is to learn the states in each location, representing functional regions. The states are summarized as its methylation probability.
+There has been growing interests in segmentation with aligned sequences of multiple cell types (citation needed). In these datasets, regions where different cell types have drastically different methylation patterns are of key interest. These regions are called {\em differential methylation region} in computational biology literature. Specifically, if given a state, the methylation probabilities are different for different cell types, we call it a differential methylation state.
 
-Differential Methylation States: by working on aligned methylation sequences across different cell types, we aim to identify
-states that corresponds to differential methylation regions. Specifically, if for some state, if it has low methylation probability on
-cell type 1 and high methylation probability on cell type 2 (or the other way round), then it indicates differential methylation states.
+In this paper, we use a learning-based framework to study these data. We use a probablistic model - binomial hidden Markov model to model these sequences. In particular, for the single sequence model, given each state $h$ and methylation coverage $c$, the methylation count $m$ is drawn from a binomial distribution $\bin(c,p_h)$, where $p_h \in [0,1]$ is the methylation probability over state $h$. The multiple sequences model is a generalization over the single sequence model: the methylation counts over the cells $(m^1, \ldots, m^r)$ are conditionally independent given $h$, and each of them a drawn from a binomial distribution: $m^i | h \sim \bin(c^i,p_h)$.
 
-We use a binomial hidden Markov model to model the joint probability of the sequence. In particular, for single-sequence model,
-given each state $h$ and methylation
-coverage $c$, the methylation count $m$ is drawn from a binomial distribution $\bin(m,p_h)$, where $p_h \in [0,1]$ is the expected methylation
-probability over state $h$. The multiple sequence model is a generalization over single-sequence model: specifically, the methylation counts over the cells
-$(m^1, \ldots, m^r)$ are conditionally independent given $h$, and $m^i | h \sim \bin(m,p_h)$.
-
-Challenges:
+There are several key challenges for learning on this data using the binomial HMM model:
 \begin{enumerate}
-\item We are given a large dataset, and biologists would like to use the full dataset for accurate statistical estimation. Traditional methods such as EM takes
-a long time.
-\item Another choice is the spectral algorithm based on tensor decomposition~\cite{AGHKT12}. Unfortunately a naive application
-of the algorithm does not apply in this context, since we have a large observation spaces.
-Computing the full co-occurence matrix/tensor has large time and space complexities.
-\item Recently tensor decomposition methods have been generalized to incorporate kernel methods~\cite{SADX14}. However the time complexity of running such algorithm will be at least
-$\Omega(n^2)$, where $n$ is the size of the training data.
+\item For biological applications, we would like to use the full dataset for accurate estimation. Traditional methods such as EM takes a long time to process the data, and thus are unsuitable for this application.
+\item Since we are given a large observation space (over the product space of coverage and methylation counts), a naive application of the tensor decomposition algorithm (e.g the tensor power method in~\cite{AGHKT12}) would need high time and space complexities.
+\item A line of work on kernel-based tensor decomposition methods for latent variable models have been proposed~\cite{SADX14}, however the time and space complexity of running such algorithm will be at least quadratic in the size of the training data, which is prohibitive.
 \end{enumerate}
 
-In this paper, we propose a feature map-based framework tailored to the problem. Furthermore we develop several feature maps, including binning map and beta-Bernoulli
-feature map. After recovering the expected feature map, we use a novel recovery procedure, computing the expected methylation probability.
+In this paper, we propose a feature map based framework to address all the challenges. In addition, we develop a novel feature map, i.e. Beta-Bernoulli feature map. After recovering the expected feature map, we apply a novel recovery procedure, estimating the expected methylation probability robustly.
 
-We observe model mismatch in the dataset, thus making the recovered value of transition matrix and initial probability unstable. We introduce a novel stablization
- procedure to address this issue.
+In the experiments, we observe model mismatches, thus making the recovered value of transition matrix and initial probability unstable. To address this issue, we introduce a novel stablization procedure.
 
-In our experiments, we observe comparable recovery results to EM. However, our algorithm has a large improvement in running time.
+We test the performance of our algorithm on both synthetic and real datasets. For synthetic datasets, our improvement over EM are both computational and statistical; we observed better estimation accurary and faster running time. For real datasets, we observe comparable recovery results to EM. However, our algorithm has a significant improvement in running time. %Moreover, our recovered states has a better interpretability compared to EM.

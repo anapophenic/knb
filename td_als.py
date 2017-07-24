@@ -215,7 +215,7 @@ if __name__ == '__main__':
         lam = np.zeros(r)
         lam[1] = l;
         w_1, As_1, w_2, As_2 = co_regularized_als(P_123_1, P_123_2, k, lam, tol)
-        #err_1 = ut. normalized_km(As_1[1], Cs_1[1])
+        #err_1 = ut.normalized_km(As_1[1], Cs_1[1])
         #err_2 = ut.normalized_km(As_2[1], Cs_2[1])
         err_3 = error_eval_tensor(w_1, As_1, P_123_1, w_2, As_2, P_123_2)
         errs.append(err_3)

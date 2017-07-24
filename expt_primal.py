@@ -222,54 +222,89 @@ def synthetic_matching(mod):
     print '|p_ch_h - p_ch| = ', np.linalg.norm(p_ch_h - mod.p_ch)
     print '|T_h - T| = ', np.linalg.norm(T_h - mod.T)
     print '|pi_h - pi| = ', np.linalg.norm(pi_h - mod.pi)
+    err_p = np.linalg.norm(p_ch_h - mod.p_ch)
 
-    return p_ch_h, C_h, T_h, pi_h
+    return p_ch_h, C_h, T_h, pi_h, err_p
 
 def synthetic_expt(mod):
 
     vis.directory_setup(mod);
     #sys.stdout = open(path_name+'/parameters.txt', 'w+');
 
-    mod.p_c, mod.p_ch, mod.T, mod.pi = generate_params(mod.N, mod.m, mod.r, mod.min_sigma_t)
+    mod.p_c, mod.p_ch, mod.T, mod.pi = generate_params(mod.N, mod.m, mod.r,mod.min_sigma_t, mod.mu)
 
     print 'Generating Data..'
+    mod.size_to_try = len(mod.ls)
+    mod.errs_spectral = np.zeros((mod.reps, mod.size_to_try));
+    mod.errs_em = np.zeros((mod.reps, mod.size_to_try));
 
-    mod.coverage_test, mod.methylated_test, mod.h_test = dg.generate_seq_bin_c(mod, mod.l_test);
-    mod.coverage_train, mod.methylated_train, mod.h_train = dg.generate_seq_bin_c(mod, mod.l);
-    mod.N, mod.x_zipped = di.triples_from_seq(mod.coverage_train, mod.methylated_train, 'explicit')
-    mod.a, mod.p_c_h = di.stats_from_seq(mod.coverage_train, mod.methylated_train)
-    mod.x_importance_weighted = di.importance_weightify(mod.x_zipped, mod.l);
-    mod.P_21, mod.P_31, mod.P_23, mod.P_13, mod.P_123 = mc.moments_cons_importance_weighted(mod);
+    for i in range(mod.reps):
+        for j in range(mod.size_to_try):
+            mod.l = mod.ls[j]
+            mod.coverage_test, mod.methylated_test, mod.h_test = dg.generate_seq_bin_c(mod, mod.l_test);
+            mod.coverage_train, mod.methylated_train, mod.h_train = dg.generate_seq_bin_c(mod, mod.l);
+            mod.N, mod.x_zipped = di.triples_from_seq(mod.coverage_train, mod.methylated_train, 'explicit')
+            mod.a, mod.p_c_h = di.stats_from_seq(mod.coverage_train, mod.methylated_train)
+            mod.x_importance_weighted = di.importance_weightify(mod.x_zipped, mod.l);
+            mod.P_21, mod.P_31, mod.P_23, mod.P_13, mod.P_123 = mc.moments_cons_importance_weighted(mod);
 
-    mod.fig_title = 'synthetic'
-    mod.td_alg = ''
-    mod.pp_alg = ''
+            mod.fig_title = 'synthetic'
+            mod.td_alg = ''
+            mod.pp_alg = ''
 
-    mod.bed_list_gt, mod.state_name_gt = get_bed(mod, 'gt_state', mod.p_ch, mod.h_test)
-    synthetic_print_decoding(mod, mod.p_ch, mod.T, mod.pi, 'gt_decoder')
-    #R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = mc.moments_gt(O, phi, N, n, T, pi)
-    #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
-    #print 'C = '
-    #print C
+            mod.bed_list_gt, mod.state_name_gt = get_bed(mod, 'gt_state', mod.p_ch, mod.h_test)
+            synthetic_print_decoding(mod, mod.p_ch, mod.T, mod.pi, 'gt_decoder')
+            #R_21, R_31, R_23, R_13, R_123, C, S_1, S_3 = mc.moments_gt(O, phi, N, n, T, pi)
+            #check_conc(P_21, R_21, P_31, R_31, P_23, P_13, P_123, R_123)
+            #print 'C = '
+            #print C
 
-    for mod.m_h, (mod.td_alg, mod.pp_alg) in itertools.product(mod.ms, mod.selections):
+            for mod.m_h, (mod.td_alg, mod.pp_alg) in itertools.product(mod.ms, mod.selections):
 
-        mod.p_ch_h, mod.C_h, mod.T_h, mod.pi_h = estimate_observation(mod)
-        mod.p_ch_h, mod.C_h, mod.T_h, mod.pi_h = postprocess(mod)
-        mod.p_ch_h, mod.C_h, mod.T_h, mod.pi_h = synthetic_matching(mod)
+                mod.p_ch_h, mod.C_h, mod.T_h, mod.pi_h = estimate_observation(mod)
+                mod.p_ch_h, mod.C_h, mod.T_h, mod.pi_h = postprocess(mod)
+                mod.p_ch_h, mod.C_h, mod.T_h, mod.pi_h, err_p = synthetic_matching(mod)
 
-        print 'posterior decoding...'
-        synthetic_print_decoding(mod, mod.p_ch_h, mod.T_h, mod.pi_h, 'estimated_decoder')
-        print_params(mod)
+                if mod.td_alg == 'tpm':
+                    mod.errs_spectral[i,j] = err_p
+                elif mod.td_alg == 'baum_welch':
+                    mod.errs_em[i,j] = err_p
 
-def generate_params(N, m, r, min_sigma_t):
-    p_c = dg.generate_p_c(N, r);
+                print 'posterior decoding...'
+                synthetic_print_decoding(mod, mod.p_ch_h, mod.T_h, mod.pi_h, 'estimated_decoder')
+                print_params(mod)
+
+    mod.error_bar_spectral = error_bar(mod.errs_spectral)
+    mod.error_bar_em = error_bar(mod.errs_em)
+
+    plot_error(mod)
+
+def error_bar(mat):
+    return (np.mean(mat, axis=0), np.std(mat, axis=0))
+
+
+def plot_error(mod):
+    fig, ax = plt.subplots(1, 1)
+    plt.hold(True)
+    line_spectral = plt.errorbar(mod.ls, mod.error_bar_spectral[0], yerr=mod.error_bar_spectral[1], color='r', label='Spectral')
+    line_em = plt.errorbar(mod.ls, mod.error_bar_em[0], yerr=mod.error_bar_em[1], color='b', label='EM')
+    plt.yscale('log')
+    plt.legend([line_spectral, line_em], ['Spectral', 'EM'])
+    ax.grid(True)
+    ax.set_title('Reconstruction Error, m = ' + str(mod.m_h))
+    plt.show(block=False)
+    fig.savefig('Synthetic_m=' + str(mod.m_h))
+    plt.close('all')
+
+
+def generate_params(N, m, r, min_sigma_t, mu):
+    p_c = dg.generate_p_c(N, r, mu);
     print 'p_c = '
     print p_c
 
-    #p_ch = dg.generate_p_ch_random(ms);
+    p_ch = dg.generate_p_ch_random(m,r);
     #p_ch = dg.generate_p_ch_cartesian(ms);
-    p_ch = dg.generate_p_ch_monotone(m,r);
+    #p_ch = dg.generate_p_ch_monotone(m,r);
     print 'p_ch = '
     print p_ch
 
@@ -307,7 +342,7 @@ if __name__ == '__main__':
     Expt 1: Compare Binning Feature vs. Beta Feature
 
     '''
-
+    '''
     mod = model()
     #chrs = [str(a) for a in range(1,20,1)]
     #chrs.append('X')
@@ -351,7 +386,7 @@ if __name__ == '__main__':
     real_expt(mod)
 
     #real_expt(phis, chrs, cell_groups, segments, lengths, lengths_test, n, ms, ctxt_groups, 0, path_name, tex_name)
-
+    '''
     '''
     Expt 2: Vary the number of Segments
 
@@ -368,7 +403,7 @@ if __name__ == '__main__':
     '''
     Expt 3: Synthetic dataset
     '''
-    '''
+
     mod = model()
     mod.ch = '1'
     mod.s = 1
@@ -378,13 +413,14 @@ if __name__ == '__main__':
     mod.path_name = 'synthetic/'
     mod.n = 30
     mod.N = 100
-    mod.l = 100000
+    mod.ls = [pow(2,i) for i in range(8, 16)]
     mod.l_test = 500;
     mod.min_sigma_t = 0.8
     mod.r = 2
     mod.m = 4
     mod.ms = range(4,5,1)
-    mod.selections = [('tpm', 'pos')]
+    mod.selections = [('tpm', 'pos'), ('baum_welch', 'no')]
+    mod.reps = 200
+    mod.mu = 25
 
     synthetic_expt(mod)
-    '''

@@ -36,21 +36,39 @@ def generate_p_ch_cartesian(ms):
 
     return p_ch
 
-def generate_p_ch_random(ms):
-    m = ut.prod(ms)
-    r = len(ms)
+def generate_rand_hl(i):
+    if i == 0:
+        return np.random.rand() * 0.3
+    else:
+        return 0.7 + np.random.rand() * 0.3
 
+def generate_p_ch_random(m, r):
+    # m = 4, r = 2
     p_ch = np.random.rand(r, m);
+    for i_0, i_1 in itertools.product(range(2), range(2)):
+        c = i_0 * 2 + i_1
+        p_ch[0,c] = generate_rand_hl(i_0)
+        p_ch[1,c] = generate_rand_hl(i_1)
 
     return p_ch
 
+def generate_trunc_poisson(N, mu):
+    # poi mean should be much less than N,
+    # otherwise the distribution is highly non Poisson
+    p_c = np.zeros(N+1)
+    for i in range(N+1):
+        p_c[i] = scipy.stats.poisson.pmf(i, mu)
+    p_c = ut.normalize_v(p_c)
+    return p_c
 
-def generate_p_c(N, r):
+
+def generate_p_c(N, r, mu):
     #p = np.zeros(N+1);
     #p[N] = 1;
+    #p_c[c,:] = np.ones(N+1) / (N+1);
     p_c = np.zeros((r, N+1))
     for c in range(r):
-        p_c[c,:] = np.ones(N+1) / (N+1);
+        p_c[c,:] = generate_trunc_poisson(N, mu)
     return p_c
 
 #def generate_p_N_c(N, r):
@@ -61,9 +79,8 @@ def generate_T(m, min_sigma_t):
     #T = np.asarray([[0.9, 0.05, 0.05], [0.05, 0.9, 0.05], [0.05, 0.05, 0.9]]);
     #T = np.eye(3);
     #T = np.asarray([[0.8, 0.2], [0.2, 0.8]])
-
-    T = min_sigma_t * np.eye(m) + (1 - min_sigma_t) * np.random.random((m, m))
-    return ut.normalize_m(T)
+    T = min_sigma_t * np.eye(m) + (1 - min_sigma_t) * ut.normalize_m(np.random.random((m, m)))
+    return T
 
 def generate_pi(m):
     #pi = dataGenerator.makeDistribution(m)

@@ -1,9 +1,84 @@
 \section{Algorithm}
+Although the algorithm of~\cite{AGHKT12} is statistically consistent and more computationally efficient than EM, directly applying it to our setting has a few drawbacks: First, if we covert our observations $(c_t, \mu_t)$ to categorical observations, then since $(c_t, \mu_t) \in \cbr{(x,y) \in \N^2: x\leq y \leq N}$, the observation space scale as $O(N^2)$.  In practice, $N$ can be as large as 2000, making $n$, the size of the observation space, as large as $10^6$, which can be prohibitive. Moreover, we are given the prior information that $\mu_t$ is drawn from a binomial distribution $\bin(c_t, p_{h_t})$, which a direct aplication of~\cite{AGHKT12} will not utilize. Instead, it suffices to estimate vector $p$ for our application. Estimating the joint distribution of $c_t$ and $\mu_t$ given $h_t$ is not necessary for our purposes, and direct estimation of $p$ may result in better statistical efficiency.
 
-Feature map
+To overcome these drawbacks, we propose a feature-map based algorithm for learning the binomial hidden Markov model. The algorithm relies on the tensor decomposition algorithm of~\cite{AGHKT12}, but has several novel modifications. We introduce them in the following subsections.
 
-Recovery of methylation probability
+\subsection{Feature Map} We use a feature map
+$\phi(x)$ to map the observations to a vector. By redefining $C_i = \E[\phi(x_i)|h_2]$,
+and $P_{i,j} := \E[\phi(x_i) \otimes \phi(x_j)]$ (where $i,j$ are distinct elements from $\cbr{1,2,3}$)
+and $T := \E[\phi(x_1) \otimes \phi(x_2) \otimes \phi(x_3)]$, it can be shown that same as in Section 2.3, relationship
+\[ P_{i,j} = C_i \diag(w) C_j^T = \sum_{l=1}^m w_l (C_i)_l \otimes (C_j)_l \]
+and
+\[ T = \sum_{l=1}^m w_l (C_1)_l \otimes (C_2)_l \otimes (C_3)_l \]
+still holds, and Steps 2-5 in Section 2.3 provably recovers matrix $C_2$, matrix $T$ and vector $\pi$
+modulo column permutation and scaling.
 
-Stablization Procedure
+%\paragraph{Binning mapping} Given observation $(c, \mu)$, $\phi_{\bin, n}(c, \mu)$ is a $n$-dimensional vector, with its entries as follows:
+%\[ (\phi_{\bin, n}(c, \mu))_i = \begin{cases} I(\frac{\mu}{c} \in (\frac{i-1}{n}, \frac{i}{n}]) & c \neq 0 \\ 0 & c = 0 \end{cases} \]
+%where $n$ is a hyperparameter controlling the number of the bins, and the width of the bins is $\frac{1}{n}$.
 
-Multiple Celltypes
+\paragraph{Beta Mapping} We propose a novel feature map, namely Beta mapping, to map the observations to vectors. Since our goal is to recover $p_h$ for all $h$, we would like a function of $c_t$ and $m_t$ that reveals information on the underlying $p_{h_t}$. We map the observation $(m_t, c_t)$ to a (discretized) distribution with its mean around $\frac{c_t}{m_t}$, which is $p_{h_t}$ in expectation; moreover, if $c_t$ is large, then the mapped distribution is more concentrated, implying that we have a higher confidence on the value of $p_{h_t}$.
+
+Formally, given observation $(c, \mu)$, $\phi_{\bet, n}(c, \mu)$ is a $n$-dimensional vector, with its entries defined as:
+\[ (\phi_{\bet, n}(c, \mu))_i = \frac{1}{B(\mu+1, c-\mu+1)} (\frac{i}{n})^\mu (1-\frac{i}{n})^{c-\mu} \]
+We also denote by the above quantity $\varphi_{\bet}((c,\mu), \frac{i}{n})$, where $\varphi_{\bet, n}(x, t) = \frac{1}{B(\mu+1, c-\mu+1)} t^\mu (1-t)^{c-\mu}$.
+We will run Algorithm $\TD$ with feature map $\phi_{\bet, n}$.
+
+%\paragraph{Recovery of $p_h$ from Expected  Binning feature mapping}
+%Recall that
+%\[ \int_0^1 t \E[\phi_{\bin}(x,t) | h] dt = \E[\frac{m}{c} | h] = p_h \]
+%Thus,
+%\[ p_h = \int_0^1 t \E[\phi_{\bin}(x,t) | h] dt. \]
+
+\subsection{Recovery of Methylation Probabilities}
+Notice that running the Algorithm $\TD$ with feature map $\phi$, we will recover $C_2 = \E[\phi(x)|h]$, which is not the methylation probability. To recover the model parameters $p$,we need a recovery procedure that extracts the value of $p_h$ for each $h$ from $\E[\phi(x)|h]$ estimated from tensor decomposition.
+
+\paragraph{Recovery of $p_h$ from Expected Beta Feature Mapping} If the feature map $\phi$ is the Beta feature mappping $\phi_{\bet, n}$, we use the following formula to recover $p_h$ from $\E[\phi(x)|h]$:
+\[ \hat{p}_h := \frac{\frac{1}{n} \sum_{i=1}^n \frac{i}{n} \E[(\phi_{\bet}(x))_i | h] - a}{1 - 2 a}, \]
+where $a = \E[\frac{1}{c+2}]$. We justify the recovery formula as follows.
+
+Recall that
+\[ \int_0^1 \frac{t \cdot t^{m} (1-t)^{c-m}}{B(m+1,c-m+1)} dt = \int_0^1 \frac{t \cdot t^{(m+1)-1} (1-t)^{(c-m+1)-1}}{B(m+1,c-m+1)} dt = \frac{m+1}{c+2} \]
+Therefore,
+\[ \int_0^1 t \E[\varphi_{\bet}(x,t) | h] dt = \E\sbr{\frac{m+1}{c+2} | h} = \E\sbr{\frac{cp_h + 1}{c + 2} | h} = \E\sbr{\frac{c}{c+2}} p_h + \E\sbr{\frac{1}{c+2}} \]
+assuming independence between $h$ and $c$.
+Let $a = \E[\frac{1}{c+2}]$. Then,
+\[ \int_0^1 t\E[\varphi_\bet(x,t) | h] dt = (1 - 2a) p_h + a. \]
+Hence,
+\[ p_h = \frac{\int_0^1 t\E[\varphi_{\bet}(x,t) | h] dt - a}{1 - 2 a}. \]
+In practice, since we only have finite dimensions of the feature map, we do discrete
+summation as opposed to integration. Using the relationship that $\phi_{\bet, n}(x)_i = \varphi_{\bet}(x, \frac{i}{n})$, we get
+\[ p_h \approx \frac{\frac{1}{n} \sum_{i=1}^n \frac{i}{n} \E[(\phi_{\bet}(x))_i | h] - a}{1 - 2 a}. \]
+
+\subsection{Stablization Procedure}
+In practice, the binomial hidden Markov model may not perfectly characterize the data distribution. Therefore, the methylation probability estimation provided by the algorithm may not fully capture the data distribution and causes estimation errors on other parameters, such as initial probablity and transition matrix. To address this issue, we propose a least squares formulation for recovering the transition matrix and initial probability distribution. Given $\hat{C}_2$ as an estimatior of $\E[\phi(x_2)|h_2]$, we propose to solve the following optimization problem:
+\[ \min_{H_{2,1}: \forall i,j (H_{2,1})_{i,j} \geq 0, \sum_{i,j} (H_{2,1})_{i,j} = 1} \| P_{2,1} - \hat{C}_2 H_{2,1} \hat{C}_2^T \|_F^2 \]
+Here, $H_{2,1}$ is and estimator of $\P[x_2 = i, x_1 = j]$, and we can recover the transition matrix and intial probability by applying the formulae $\pi =\one^T H_{2,1}$ and $T = H_{2,1} \diag(\pi)^{-1}$.
+Empirically, this can be shown to have superior performance compared to direct applying the formula
+\[ H_{2,1} := \hat{C}_2^{\dagger} P_{2,1} \hat{C}_2^{\dagger T}\]
+which will get an estimator of $H_{2,1}$ with large negative entries.
+
+\subsection{Multiple Cell Types}
+For experiments with differential methylation between two cell types, we observe two
+coverage methylation pairs, one for each cell types. That is, $x = ((c^1, \mu^1), (c^2, \mu^2))$.
+Our goal is to extract hidden states represented by a pair of methylation probabilities $(p^1_h, p^2_h)$.
+To this end, we construct a concatenated feature map from feature maps on each cell type:
+\[ \phi(x) = \begin{bmatrix} \phi(c^1, \mu^1) \\ \phi(c^2, \mu^2) \end{bmatrix} \]
+Following the tensor decomposition algorithm in Section 2, we can recover the expected feature map
+given hidden states:
+\[ C_2 = \E[\phi(x)|h] = \begin{bmatrix} \E[\phi(c^1, \mu^1)|h] \\ \E[\phi(c^2, \mu^2)|h] \end{bmatrix}\]
+Now, applying the recovery procedure of $p_h$, we can now recover
+a pair $(p^1_h, p^2_h)$ for each hidden state $h$. For $h$, if we see a large difference between
+$p^1_h$ and $p^2_h$, then we identify state $h$ as differntial methylation state.
+We follow the same stable recovery procedure as in the last subsection.
+
+\subsection{Decoding}
+Parameter recovery gives us estimates on model parameters $\pi, T, p$. We perform decoding, i.e. inference
+over the hidden states, using two algorithms: posterior decoding and Viterbi decoding. In posterior decoding,
+we compute $\P(h_t=i|x_1, \ldots, x_T)$ and pick the $i$ achieving the maximum for each position $t$. In Viterbi decoding,
+we use a dynamic program to get a combination of $h_1, \ldots, h_T$ that maximizes
+$\P(h_1, \ldots, h_T|x_1,\ldots,x_T)$. Both algorithm runs in time $O(l m^2)$. In the experiments, we see the decoding results of both methods are roughly the same, therefore, we focus on the results of posterior decoding in this paper.
+
+When we have multiple cell types, we compute the observation probabilities given hidden states under the following assumption. Given positition $t$,
+we assume conditional independence among different observations in different cell types given the hidden state and the coverage in its cell type. Formally, we have
+\[ \P(c_1, c_2 | \mu_1, \mu_2, h) = \P(c_1 | \mu_1, h) \cdot \P(c_2 | \mu_2, h) \]

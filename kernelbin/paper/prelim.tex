@@ -2,65 +2,86 @@
 
 \subsection{The Probabilistic Model}
 
-We are given a sequence $\cbr{x_t = (c_t, \mu_t)}_{t=1}^l$, where at each position $t$, the coverage is an nonnegative integer $c_t \in \cbr{0,1,\ldots,N}$ and the methylation count is $\mu_t \in \cbr{0,1,\ldots,c_t}$. We model the data using a binomial hidden Markov model, that is, the underlying dynamics of the hidden states is driven by a Markov chain $\cbr{h_t}$, where $h_t \in [m]$. For each hidden state $h \in [m]$, an average methylation probability $p_h \in [0,1]$ is associated with it.
-Given $c_t$ and $h_t$, $\mu_t$ is drawn from a binomial distribution, with the mean parmeter $p = p_h$.
+We are given a sequence $\cbr{x_t = (c_t, \mu_t)}_{t=1}^l$, where at each position $t$, $c_t \in \cbr{0,1,\ldots,N}$ is called the coverage and $\mu_t \in \cbr{0,1,\ldots,c_t}$ is called the methylation count. We model the data using a binomial hidden Markov model, that is, there are underlying hidden states $h_t$ in $[m]$ generating the observations $x_t$. In addition, The dynamics of $h_t$'s is modeled by a Markov chain. Each hidden state $h \in [m]$ is associated with a methylation probability $p_h \in [0,1]$.
+In our model, $c_t$'s' are not modeled probablistically  but are observed and measure how hard it is to sample from location $t$ in the genome.
+Given $c_t$ and $h_t$, $\mu_t$ is drawn from a binomial distribution, with the mean parameter $p = p_{h_t}$.
 Formally,
 \[ \mu_t | c_t, h_t \sim \bin(c_t, p_{h_t}) \]
 
-Therefore, The binomial HMM can be summarized by parameters $(\pi, T, p)$, where $\pi \in \R^m$ is the initial probability distribution $(\P(h_1 = i))_{m \times 1}$ and $T \in \R^{m \times m}$ is the transition matrix of the Markov chain $(\P(h_{t+1} = i | h_t = j))_{m \times m}$. To avoid notation clutter, we drop the time indices $t$ if they are the same among all the variables appeared in a formula.
+To summarize, the binomial HMM model can be represented by parameters $(\pi, T, p)$, where $\pi \in \R^m$ is the initial probability distribution (that is, $\pi_i = \P(h_1 = i)$), $T \in \R^{m \times m}$ is the transition matrix of the Markov chain (that is, $T_{i,j} = \P(h_{t+1} = i | h_t = j)$), and $p \in \R^m$ is the methylation probability vector (that is, given $h_t = i$ and $c_t$, $\mu_t$ is drawn from $\bin(c_t, p_i)$).
 
 \subsection{Matrix and Tensor Notations}
-TODO: rewrite this part
-A third-order tensor $M \in \R^{n_1} \otimes \R^{n_2} \otimes \R^{n_3}$ is a $3$-dimensional array with $n_1 n_2 n_3$ entries, with its $(i_1, i_2, i_3)$-th entry denoted as $M_{i_1, i_2, i_3}$.
+A $3$-dimensional array $T \in \R^{n_1 \times n_2 \times n_3}$ is called a 3rd-order tensor, and we use $T_{i_1, i_2, i_3}$ to denote its $(i_1, i_2, i_3)$-th entry. The tensor product of vectors $v_i$, $i = 1, 2, 3$ is denoted by $v_1 \otimes v_2 \otimes v_3$, where its
+$(i_1, i_2, i_3)$-th entry is $(v_1)_{i_1} (v_2)_{i_2} (v_3)_{i_3}$. We say a tensor has rank $1$ if it can be
+written as a tensor product of vectors. A tensor $T$ is called symmetric if $T_{i_1, i_2, i_3} = T_{\pi(i_1), \pi(i_2), \pi(i_3)}$ for any permutation $\pi: \cbr{1,2,3} \to \cbr{1,2,3}$.
 
-Given $n_i \times 1$ vectors $v_i$, $i = 1, 2, 3$, their tensor product, denoted by $v_1 \otimes v_2 \otimes v_3$ is the $n_1 \times n_2 \times n_3$ tensor whose $(i_1, i_2, i_3)$-th entry is $(v_1)_{i_1} (v_2)_{i_2} (v_3)_{i_3}$. A tensor that can be expressed as the tensor product of a set of vectors is called a rank $1$ tensor. A tensor $M$ is symmetric if and only if for any permutation $\pi: [3] \to [3]$, $M_{i_1, i_2, i_3} = M_{\pi(i_1), \pi(i_2), \pi(i_3)}$.
-
-Let $M \in \R^{n_1} \otimes \R^{n_2} \otimes \R^{n_3}$. If $V_i \in \R^{n_i \times m_i}$, then $M(V_1, V_2, V_3)$ is a tensor of size $m_1 \times m_2 \times m_3$, whose $(i_1, i_2, i_3)$-th entry is: $M(V_1, V_2, V_3)_{i_1, i_2, i_3} = \sum_{j_1, j_2, j_3} M_{j_1, j_2, j_3} (V_1)_{j_1,i_1} (V_2)_{j_2, i_2} (V_3)_{j_3,i_3}$.
-%\js{Isn't $V_i \in \R^{n_i \times m_i}$?}
-
-Since a matrix is a order-2 tensor, we also use the following shorthand to denote matrix multiplication. Let $M \in \R^{n_1} \otimes \R^{n_2}$. If $V_i \in \R^{m_i \times n_i}$, then $M(V_1, V_2)$ is a matrix of size $m_1 \times m_2$, whose $(i_1, i_2)$-th entry is: $M(V_1, V_2)_{i_1, i_2} = \sum_{j_1, j_2} M_{j_1, j_2} (V_1)_{j_1,i_1} (V_2)_{j_2, i_2}$. This is equivalent to $V_1^{\top} M V_2$.
+We define tensor-matrix multiplication as follows. Given tensor $T \in \R^{n_1 \times n_2 \times n_3}$ and matrices $V_i \in \R^{n_i \times m_i}$, $i = 1,2,3$, $T(V_1, V_2, V_3)$ is a tensor of size $m_1 \times m_2 \times m_3$, whose $(i_1, i_2, i_3)$-th entry is computed by the formula $T(V_1, V_2, V_3)_{i_1, i_2, i_3} = \sum_{j_1, j_2, j_3} T_{j_1, j_2, j_3} (V_1)_{j_1,i_1} (V_2)_{j_2, i_2} (V_3)_{j_3,i_3}$.
 
 
-\subsection{Basic Spectral Method for HMMs}
-In paper~\cite{AGHKT12}, a spectral algorithm of parameter recovery for hidden Markov model is proposed.
-Its main idea is to reduce the problem to a symmetric orthogonal tensor decompositon problem. Here we give a brief overview in our context.
+\subsection{Basic Spectral Method for Categorical HMMs}
+\cite{AGHKT12} proposes a spectral algorithm for parameter recovery for hidden Markov models. Its main idea is to reduce the learning problem to tensor decompositon, which is well-studied in the numerical linear algebra literature. First, the algorithm construct a co-occurence tensor for thee consecutive observations. Then, it make a series of transformations over the tensor to make it symmetric and orthogonal. Finally, it applies tensor power method to recover the columns of the observation matrix.
 
-Basic Tensor Structure: In hidden Markov model, it is known that observations $(x_{t-1}, x_t, x_{t+1})$ are conditionally independent given hidden state $h_t$. Define
-$P_{i,j} := \E[x_i \otimes x_j]$ (where $i,j$ are distinct elements from $[3]$) and $T := \E[x_1 \otimes x_2 \otimes x_3]$. Define $C_i = \E[x_i | h_2]$ for $i \in [3]$,
-we have that
-\[ P_{i,j} = C_i \diag(w) C_i^T = \sum_{l=1}^m w_l (C_i)_l \otimes (C_j)_l \]
+In the setting of~\cite{AGHKT12}, HMMs with categorical observations are considered. In this model, the hidden states $h_t$ are still drawn from a Markov chain, whereas given the hidden state $h_t$ in $[m]$, the observation $x_t$ is drawn from a categorical distribution on $[n]$ represented by $O_{h_t}$, where $O$ is a matrix in $\R^{n \times m}$.
+Note that the model is not the same as our binomial HMM, and hence the results of~\cite{AGHKT12} does not directly apply to our setting. Nevertheless, as we show in Section 3, they can be adapted to our setting after a few novel modifications. We give a brief step-by-step overview of~\cite{AGHKT12}'s algorithm, abbreviated as \TD.
+
+\paragraph{Step 1: Construct Matrices and Tensors.} In the hidden Markov model, for any $t$, observations $(x_{t-1}, x_t, x_{t+1})$ are conditionally independent given the hidden state $h_t$. We compute
+$P_{i,j} := \E[x_i \otimes x_j]$~\footnote{Since we only have a finite sample, in practice, expecations are replaced by empirical averages over the data.} (where $i,j$ are distinct elements from $\cbr{1,2,3}$~\footnote{Although only the first three observations are used, the algorithm can be generalized to use all three consecutive observations in the sequences.}) and $T := \E[x_1 \otimes x_2 \otimes x_3]$. If we use matrix $C_l$ to denote a matrix where $(C_l)_{i,j} = \E[x_l = i | h_2 = j] \in \R^{n \times m}$ for $l \in \cbr{1,2,3}$, and use vector $w \in \R^m$ to denote a vector where $w_i = \P[h_2 = i]$,
+then we can represent matrices $P_{i,j}$ and the tensor $T$ as follows:
+\begin{equation}
+  P_{i,j} = C_i \diag(w) C_j^T = \sum_{l=1}^m w_l (C_i)_l \otimes (C_j)_l
+  \label{eqn:pij}
+\end{equation}
 and
-\[ T = \sum_{l=1}^m w_l (C_1)_l \otimes (C_2)_l \otimes (C_3)_l \]
+\begin{equation}
+  T = \sum_{l=1}^m w_l (C_1)_l \otimes (C_2)_l \otimes (C_3)_l
+  \label{eqn:t}
+\end{equation}
 
-Symmetrization: define matrix $S_1 := P_{2,3} P_{1,3}^{\dagger}$ and $S_3 := P_{2,1} P_{3,1}^{\dagger}$. It is known that $S_1 = C_2 C_1^{\dagger}$, and
-$S_3 = C_2 C_3^{\dagger}$. Now define
+\paragraph{Step 2: Symmetrization.} Observe that the tensor $T$ is neither symmetric nor
+orthogonal. We will symmetrize $T$ as follows.
+Compute symmetrization matrices $S_1 := P_{2,3} P_{1,3}^\dagger$ and $S_3 := P_{2,1} P_{3,1}^\dagger$. It can be shown that $S_1 = C_2 C_1^\dagger$, and
+$S_3 = C_2 C_3^\dagger$. Now we compute a trilinear transformation of $T$ using $S_1$ and $S_3$:
 \[ G := T(S_1, I, S_3) = \sum_{l=1}^m w_l (C_2)_l \otimes (C_2)_l \otimes (C_2)_l = \sum_{l=1}^m w_l (C_2)_l^{\otimes 3} \]
-It can be seen that $G$ is a symmetric tensor.
+Observe that $G$ is a symmetric tensor.
 
-Orthogonalization: define matrix $M = S_3 P_{3,2}$. It is known that $M = \sum_{l=1}^m w_l (C_2)_l \otimes (C_2)_l$.
-We perform an SVD over $M = U_m S_m U_m^T$, getting matrix $W = U_m S_m^{-1/2}$. It can be seen that $W^T M W = I$.
-Now we perform linear transformation over $G$, getting tensor $H = T(M, M, M) = \sum_{l=1}^m w_l v_l^{\otimes 3}$, where
-$v_l = W^T (C_2)_l$ are orthogonal unit vectors.
-This is called a {\em symmetric orthogonal} decomposition.
+\paragraph{Step 3: Orthogonalization.} To orthogonalize $G$, we compute matrix $M := S_3 P_{3,2}$. It can be shown that $M = \sum_{l=1}^m w_l (C_2)_l \otimes (C_2)_l$.
+Now, compute an SVD and take the top $m$ singular vectors $U_m$, and singular values in diagnoal matrix $S_m$, getting orthogonalization matrix $W = U_m S_m^{-1/2}$. It can be seen that $W^T M W = I$, that is, $v_l = W^T (C_2)_l w_l^{\frac 1 2}$ are orthogonal unit vectors.
+Now we perform a trilinear transformation over $G$ using $M$, getting tensor $H = G(M, M, M) = \sum_{l=1}^m w_l^{-\frac 1 2} v_l^{\otimes 3}$.
+This form is called a {\em symmetric orthogonal} decomposition, because $H$ is symmetric and $v_l$'s are orthogonal.
 
-Tensor Power Method: The next step is to perform symmetric orthogonal decomposition to a tensor $H$.
-We start with a random vector $v_0$. We keep performing the iteration $v_{t+1} = T(v_t, v_t, I)$ until $\cbr{v_t}$ converges.
+\paragraph{Step 4: Tensor Power Method.} The next step is to perform symmetric orthogonal decomposition to tensor $H$, to recover the vector $v_l$'s.
+Starting with a random vector $v_0$, we perform tensor power iteration $v_{t+1} = H(v_t, v_t, I)$ until $\cbr{v_t}$ converges. After extracting a component $v_l$, a deflation step is performed, where we subtract the extracted rank-1 component ($H_l \gets H_{l-1} - \hat{w}_l \hat{v}_l \otimes \hat{v}_l \otimes \hat{v}_l$), and the algorithm recurses on the remaining tensor $H_l$. The detailed procedure is presented in Algorithm~\ref{alg:tpm}.
+
 \begin{algorithm}
 \caption{Tensor Power Method}
 \begin{algorithmic}
-\STATE input: tensor $T = \sum_{l=1}^m w_l v_l \otimes v_l \otimes v_l$, number of components $m$, number of iterations per component $k$.
+\STATE input: tensor $H = \sum_{l=1}^m \lambda_l v_l \otimes v_l \otimes v_l$, number of components $m$, number of iterations per component $k$.
 \STATE output: estimated factors $\cbr{\hat{v}_l}_{l=1}^m$, estimated coefficients $\cbr{\hat{w}_l}_{l=1}^m$.
 \STATE $T_0 \gets T$
 \FOR{$l=1,2,\ldots,m$}
     \STATE $v_l^0 \gets$ a vector drawn uniformly at random from $n$-dimensional unit sphere.
     \FOR{$t=1,2,\ldots,k$}
-        \STATE $\tilde{v}_l^t \gets \frac{T_{l-1}(v_l^{t-1}, v_l^{t-1}, I)}{\|T_{l-1}(v_l^{t-1}, v_l^{t-1}, I)\|}$.
+        \STATE $\tilde{v}_l^t \gets \frac{H_{l-1}(v_l^{t-1}, v_l^{t-1}, I)}{\|H_{l-1}(v_l^{t-1}, v_l^{t-1}, I)\|}$.
     \ENDFOR
     \STATE $\hat{v}_l \gets v_l^k$.
-    \STATE $\hat{w}_l \gets T_{l-1}(\hat{v}_l, \hat{v}_l, \hat{v}_l)$.
-    \STATE Deflation: $T_l \gets T_{l-1} - \hat{w}_l \hat{v}_l \otimes \hat{v}_l \otimes \hat{v}_l$.
+    \STATE $\hat{\lambda}_l \gets H_{l-1}(\hat{v}_l, \hat{v}_l, \hat{v}_l)$.
+    \STATE Deflation: $H_l \gets H_{l-1} - \hat{\lambda}_l \hat{v}_l \otimes \hat{v}_l \otimes \hat{v}_l$.
 \ENDFOR
 \end{algorithmic}
+\label{alg:tpm}
 \end{algorithm}
 
-Recovery: the row of $C_2$ can be obtained by the formula: $(C_2)_l = (W^T)^{\dagger} \hat{v}_l$.
+\paragraph{Step 5: Observation Matrix Recovery.} Recall that $C_2$ is the observation matrix $O$.
+The columns of $O$ can now be estimated by formula $\hat{O}_l = (W^T)^{\dagger} \hat\lambda_l \hat{v}_l$, for $l=1,2,\ldots,m$. %We remark that as the order of columns can be arbitrary, we cannot hope to recover matrix $C_2$ with correct column permutations.
+Now we compute our estimate of the joint probablity of $h_2$ and $h_1$: $H_{21}:=\hat{O}^{T\dagger} P_21 \hat{O}^\dagger$. Then we compute our estimate of initial probability and trasition matrix by $\hat\pi := (\one^T H_{21}^T$ and $\hat{T} := H_21 \diag(\hat \pi)^{-1}$.
+
+The above algorithm has two advantages over other algorithms such as EM: First, it only needs to make one pass over the data, and is thus computationally efficient if the size of the observation space is not too large. In contrast, EM proceeds iteratively and needs to make one pass over the data per iteration. Second, it achieves statistical consistency if the data is indeed generated from an HMM (see Theorem 1). In contrast, methods such as EM do not guarantee statistical consistency.
+
+\begin{theorem}[Statistical Consistency~\cite{AGHKT12}]
+Suppose the algorithm receives $m$ iid samples $(x_1, x_2, x_3)$ as input, which are drawn from the hidden Markov model represented by parameters $(\pi, T, O)$. Then, given parameters $\epsilon$ and $\delta$ in $(0,1)$, if the number of samples $m$ is at least $\poly( \frac{1}{\min_i \pi_i}, \frac{1}{\sigma_\mi(O)}, \frac{1}{\sigma_\mi(T)}, \frac{1}{\epsilon}, \ln \frac{1}{\delta})$,
+then with probability $1-\delta$, the output $\hat{O}$, $\hat{T}$ and $\hat{\pi}$ satisfies that
+\[ \| O - \hat{O} \Pi \|_F \leq \epsilon \]
+\[ \| T - \Pi^\dagger \hat{T} \Pi \|_F \leq \epsilon \]
+\[ \| \pi - \Pi^\dagger \hat  \pi \|_2 \leq \epsilon \]
+for some permutation matrix $\Pi$, where $\sigma_\mi(M)$ is the minimum singular value of matrix $M$.
+\end{theorem}
